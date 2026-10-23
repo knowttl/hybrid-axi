@@ -1,0 +1,4 @@
+[
+  { "id": "v2", "url": "https://hybrid-analysis.com/bff/api-docs/v2", "documentationUrl": "https://hybrid-analysis.com/docs/api/v2", "version": "2.38.0", "fetchedAt": "2026-10-23", "sha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864", "operations": 53 },
+  { "id": "labs", "url": "https://hybrid-analysis.com/bff/api-docs/labs", "documentationUrl": "https://hybrid-analysis.com/docs/api/labs", "version": "1.0.0", "fetchedAt": "2026-10-23", "sha256": "792c68a6590e081e1e0687a27a78a98c9a652aa89ea954e6eeea1c0dab2a0130", "operations": 9 }
+]
