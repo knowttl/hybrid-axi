@@ -81,10 +81,10 @@ test.each([
   expect(result.stderr).toBe("");
 });
 
-test("packed inventory remains non-executable evidence", async () => {
+test("packed inventory enables only reviewed key reads", async () => {
   const { pathToFileURL } = await import("node:url");
   const { transportBindings } = await import(pathToFileURL(join(packageRoot, "dist/src/catalogue.js")).href);
-  expect(transportBindings).toEqual({});
+  expect(Object.keys(transportBindings).sort()).toEqual(["key.current", "key.submission-quota"]);
   const inventory = JSON.parse(readFileSync(join(packageRoot, "inventory/capabilities.json"), "utf8"));
   expect(inventory.operations).toHaveLength(62);
   const schema = JSON.parse(readFileSync(join(packageRoot, "axi-credential.schema.json"), "utf8"));
