@@ -251,6 +251,8 @@ test("packed auth status resolves a synthetic private file and never prints its 
   expect(result.status).toBe(0);
   expect(decode(result.stdout)).toMatchObject({ profile: "example", source: "file", available: true, readOnly: true });
   expect(result.stdout).not.toContain("synthetic-packed-file-key");
+  expect(result.stdout).not.toContain(key);
+  expect(result.stdout).not.toContain(config);
   expect(result.stderr).toBe("");
 });
 

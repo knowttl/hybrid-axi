@@ -1,8 +1,29 @@
-import { homedir } from "node:os";
-import { resolve, sep } from "node:path";
+import { basename, resolve } from "node:path";
 import { AxiError } from "axi-sdk-js";
 import { catalogue, DESCRIPTION, help, suggestion } from "./catalogue.js";
 import { credentialStore, ORIGIN } from "./profiles.js";
+
+export function localStatusOutput(value: Record<string, unknown> | Error, config?: string, profile?: string): Record<string, unknown> {
+  const selectedConfig = config === undefined ? undefined : "<path>";
+  if (value instanceof Error) {
+    const errors: Record<string, [string, string]> = {
+      CONFIG_INSECURE: ["Private file protections failed", "Check configuration and secret file ownership and private permissions"],
+      CONFIG_INVALID: ["Invalid local configuration", "Check configuration, environment settings and env/file SecretRefs; run hybrid-axi setup"],
+      AUTH_REQUIRED: ["apiKey is required", "Check the selected env or file secret source is available and readable"],
+      PROFILE_REQUIRED: ["No profiles are configured", suggestion("setup", selectedConfig)],
+      PROFILE_AMBIGUOUS: ["Select one of the configured profiles", "Pass --profile <name> or configure defaultProfile"],
+      PROFILE_NOT_FOUND: ["Selected profile is not configured", suggestion("profile list", selectedConfig)],
+    };
+    const code = value instanceof AxiError && Object.hasOwn(errors, value.code) ? value.code : "CONFIG_INVALID";
+    const [error, recovery] = errors[code]!;
+    return { error, code, help: [recovery] };
+  }
+  const output = { ...value };
+  if ("bin" in output) output.help = [suggestion(output.setup === "configured" ? "auth status" : "setup", selectedConfig, profile), "Run hybrid-axi --help"];
+  if (output.flags && typeof output.flags === "object") output.flags = Object.fromEntries(Object.entries(output.flags)
+    .map(([name, description]) => [name, typeof description === "string" ? description.replace(/HYBRID_AXI_[A-Z_]+/g, "environment setting") : description]));
+  return output;
+}
 
 export function commandInput(argv: string[]) {
   const usage = (): never => { throw new AxiError("Unknown command, argument, or flag", "VALIDATION_ERROR", [
@@ -47,8 +68,7 @@ export function localCommand(argv: string[], store: ReturnType<typeof credential
     if (!(error instanceof AxiError) || error.code !== "PROFILE_REQUIRED") throw error;
   }
   const binary = resolve(process.argv[1] ?? "bin/hybrid-axi.js");
-  const home = homedir();
-  return { bin: binary.startsWith(`${home}${sep}`) ? `~${binary.slice(home.length)}` : binary,
+  return { bin: basename(binary),
     description: DESCRIPTION, profile: profile?.name ?? "none", origin: profile?.origin ?? ORIGIN,
     readOnly: profile ? store.effectiveReadOnly(profile) : true, setup: profile ? "configured" : "required",
     status: "Local configuration; doctor and quota are available for explicit API checks",

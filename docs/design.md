@@ -150,11 +150,11 @@ Additional command contracts are:
 
 | Command | Selectors and behavior | Compact fields |
 |---|---|---|
-| `home` / no args | Local profile, binary path with home collapsed to `~`, description and effective policy; no network. | profile, origin, readOnly, setup state |
+| `home` / no args | Local profile, binary name only (no path), description and effective policy; no network. | profile, origin, readOnly, setup state |
 | `auth status` | Local SecretRef availability and protection checks; no key value or HTTP. | profile, source kind, available |
 | `doctor` | Bounded `/key/current` and `/key/submission-quota` reads, no retries or samples. | keyLevel, quota, rateLimits |
 | `quota` | Same two key operations, body usage plus observed limit headers. | keyLevel, quota, rateLimits |
-| `hash show <sha256>` | Stable overview; `--labs` selects experimental sample overview. | sha256, verdict, threat_score, reports/report_ids |
+| `hash show <sha256>` | Stable overview; `--labs` selects experimental sample overview; report ids locally limited by `--limit` (default 100). | sha256, verdict, threat_score, reports/report_ids |
 | `hash search` | Exactly one `--hash` or `--hashes-file`; bulk POST only for the latter. | See [shipped output](../README.md#hash-and-search). |
 | `search terms` | Documented named filters only; strict nonempty input. | sha256, verdict, threat_score, report ID |
 | `search run` | Experimental Labs query, `--query`, `--size` (default 50, max 200), `--page`, `--date-from`, `--date-to`; starts once and retrieves results within the deadline. | sha256, verdict, score, query status |

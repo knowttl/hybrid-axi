@@ -118,6 +118,10 @@ Setup prints guidance without writing files or installing agent hooks.
 Set `HYBRID_AXI_API_KEY` in the environment, or reference a private UTF-8 file with `"apiKey":{"file":"<absolute-path>"}` in a named profile.
 Keys are never accepted in arguments, stored by the tool or sent by these local commands.
 `hybrid-axi auth status` verifies availability and file protections without printing the key or contacting the API.
+Auth status reports only the secret source kind (`env` or `file`).
+Home and auth status omit environment variable names, secret file paths and config paths from success, error and help output.
+Home reports only the binary name, never its absolute path.
+Their follow-up commands replace an explicit config path with `<path>`; substitute your selected config path before running them.
 `hybrid-axi profile list` lists configured profiles; `hybrid-axi config path` shows configuration and state locations.
 Every command supports `--help`; profile commands also accept `--config <path>` and `--profile <name>`.
 
@@ -169,6 +173,8 @@ The empty-state contract is verified against the fake service; live missing-hash
 Labs 425 reports analysis pending and provides the exact overview command to retry.
 `hybrid-axi hash search --hash <hash>` uses the current GET lookup for MD5, SHA1, SHA256 or SHA512 and returns associated report identifiers.
 `--hashes-file <path>` instead uses the deprecated bulk POST with a newline-separated MD5/SHA1/SHA256 file, bounded to 1 MiB.
+Report identifiers and bulk result rows in `hash show` and `hash search` are locally limited with `--limit` (default 100, and `--full` does not change it).
+When rows are limited, output reports the truncation with returned and total counts and a follow-up command using the larger `--limit`.
 
 `hybrid-axi search terms` requires at least one documented named filter; run its help for the complete filter list.
 Filter flags use kebab-case, such as `--env-id`, `--vx-family` and `--date-from`.

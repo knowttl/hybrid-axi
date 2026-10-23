@@ -15,13 +15,13 @@ export const searchCatalogue = {
   "hash show": {
     effect: "read",
     description: "Show stable SHA256 overview; --labs selects the experimental Labs overview",
-    flags: { ...common, "--labs": "Experimental Labs overview; default false" },
+    flags: { ...common, "--labs": "Experimental Labs overview; default false", "--limit": "Local row limit; default 100; --full does not change it" },
     examples: ["hybrid-axi hash show <sha256>", "hybrid-axi hash show <sha256> --labs --full"],
   },
   "hash search": {
     effect: "read",
     description: "Find associated reports by hash, or deprecated bulk lookup from a newline-separated file",
-    flags: { ...common, "--hash": "One MD5/SHA1/SHA256/SHA512; exactly one selector required", "--hashes-file": "Newline-separated MD5/SHA1/SHA256 file; deprecated bulk route" },
+    flags: { ...common, "--hash": "One MD5/SHA1/SHA256/SHA512; exactly one selector required", "--hashes-file": "Newline-separated MD5/SHA1/SHA256 file; deprecated bulk route", "--limit": "Local row limit; default 100; --full does not change it" },
     examples: ["hybrid-axi hash search --hash <hash>", "hybrid-axi hash search --hashes-file <path>"],
   },
   "search terms": {

@@ -1,9 +1,11 @@
 import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { isAbsolute, join, sep } from "node:path";
 import { afterEach, beforeEach, expect, test } from "vitest";
 import { credentialStore, ORIGIN } from "../src/profiles.js";
 import { localCommand } from "../src/local-commands.js";
+import { main } from "../src/cli.js";
+import { decode } from "@toon-format/toon";
 
 let directory: string;
 beforeEach(() => { directory = mkdtempSync(join(tmpdir(), "hybrid-profiles-")); });
@@ -15,6 +17,82 @@ function config(profiles: Record<string, unknown>, defaultProfile?: string, name
   return path;
 }
 const configured = { apiKey: { env: "SYNTHETIC_FILE_KEY" }, writes: { allowWrites: true, operations: ["synthetic-write"] } };
+
+async function output(argv: string[], env: NodeJS.ProcessEnv = {}) {
+  let stdout = "";
+  const exitCode = process.exitCode;
+  try {
+    await main(argv, { credentials: { env, home: directory }, stdout: { write: (chunk) => { stdout += chunk; } } });
+    return { stdout, value: decode(stdout), exitCode: process.exitCode };
+  } finally { process.exitCode = exitCode; }
+}
+
+test.each([
+  { args: [], source: "env" }, { args: ["home"], source: "env" }, { args: ["auth", "status"], source: "env" },
+  { args: [], source: "file" }, { args: ["home"], source: "file" }, { args: ["auth", "status"], source: "file" },
+])("local status output hides identifiers for $args with $source credentials", async ({ args, source }) => {
+  const key = join(directory, "private-key");
+  writeFileSync(key, "synthetic-file-secret", { mode: 0o600 });
+  const path = config({ example: { apiKey: source === "env" ? { env: "SYNTHETIC_FILE_KEY" } : { file: key } } }, undefined, "private 'config.json");
+  const result = await output([...args, "--config", path], { SYNTHETIC_FILE_KEY: "synthetic-env-secret" });
+  expect(result.exitCode ?? 0).toBe(0);
+  expect(result.value).toMatchObject(args[0] === "auth" ? { source, available: true } : {
+    setup: "configured", help: ["Run hybrid-axi auth status --config '<path>'", "Run hybrid-axi --help"],
+  });
+  for (const identifier of [directory, key, path, process.argv[1]!, "SYNTHETIC_FILE_KEY", "synthetic-file-secret", "synthetic-env-secret"])
+    expect(result.stdout).not.toContain(identifier);
+});
+
+test.each([[], ["home"], ["auth", "status"]])("local status help omits environment names for %j", async (...args) => {
+  const result = await output([...args, "--help"]);
+  expect(result.exitCode ?? 0).toBe(0);
+  expect(result.value).toHaveProperty("flags.--config");
+  expect(result.stdout).not.toContain("HYBRID_AXI_");
+});
+
+test.each([[], ["home"], ["auth", "status"]])("local status errors hide metadata for %j", async (...args) => {
+  const key = join(directory, "private-key");
+  writeFileSync(key, "synthetic-file-secret", { mode: 0o600 });
+  const path = config({ example: { apiKey: { file: key } } });
+  const cases = [
+    { flags: ["--profile", "absent"], env: {}, code: "PROFILE_NOT_FOUND" },
+    { flags: [], env: { HYBRID_AXI_READ_ONLY: "invalid" }, code: "CONFIG_INVALID" },
+    { flags: [], env: { HYBRID_AXI_ORIGIN: ORIGIN }, code: "CONFIG_INVALID" },
+  ];
+  for (const scenario of cases) {
+    const result = await output([...args, "--config", path, ...scenario.flags], scenario.env);
+    expect(result.exitCode).toBe(1);
+    expect(result.value).toMatchObject({ code: scenario.code });
+    expect(result.stdout).not.toContain(directory);
+    expect(result.stdout).not.toContain("HYBRID_AXI_");
+    expect(result.stdout).not.toContain("API_KEY");
+  }
+  chmodSync(path, 0o666);
+  const insecure = await output([...args, "--config", path]);
+  expect(insecure.exitCode).toBe(1);
+  expect(insecure.value).toMatchObject({ code: "CONFIG_INSECURE" });
+  expect(insecure.stdout).not.toContain(directory);
+});
+
+test("auth status hides insecure secret-file paths", async () => {
+  const key = join(directory, "private-key");
+  writeFileSync(key, "synthetic-file-secret", { mode: 0o600 });
+  chmodSync(key, 0o644);
+  const path = config({ example: { apiKey: { file: key } } });
+  const result = await output(["auth", "status", "--config", path]);
+  expect(result.exitCode).toBe(1);
+  expect(result.value).toMatchObject({ code: "CONFIG_INSECURE" });
+  expect(result.stdout).not.toContain(directory);
+  expect(result.stdout).not.toContain("synthetic-file-secret");
+});
+
+test("unconfigured home hides its config path in setup guidance", async () => {
+  const path = config({});
+  const result = await output(["home", "--config", path]);
+  expect(result.exitCode ?? 0).toBe(0);
+  expect(result.value).toMatchObject({ setup: "required", help: ["Run hybrid-axi setup --config '<path>'", "Run hybrid-axi --help"] });
+  expect(result.stdout).not.toContain(path);
+});
 
 test.each([
   { flag: "flag", env: { HYBRID_AXI_PROFILE: "variable", HYBRID_AXI_API_KEY: "synthetic-env" }, name: "flag", source: "flag" },
@@ -94,6 +172,33 @@ test("private UTF-8 secret file removes BOM and trailing whitespace", () => {
   const path = config({ example: { apiKey: { file: key } } });
   expect(store.credentials(store.select(store.load(path).config))).toEqual({ apiKey: "synthetic-file-key" });
   expect(store.status(path)).toMatchObject({ source: "file", available: true, readOnly: true });
+});
+
+test("auth status reports only the secret source kind for an env ref", () => {
+  const path = config({ example: configured });
+  const status = credentialStore({ env: { SYNTHETIC_FILE_KEY: "synthetic-configured" }, home: directory }).status(path);
+  expect(status).toEqual({ profile: "example", source: "env", available: true, origin: ORIGIN, readOnly: false });
+  expect(JSON.stringify(status)).not.toContain("SYNTHETIC_FILE_KEY");
+  expect(JSON.stringify(status)).not.toContain(path);
+});
+
+test("auth status reports only the secret source kind for a file ref", () => {
+  const key = join(directory, "key");
+  writeFileSync(key, "synthetic-file-key", { mode: 0o600 });
+  const path = config({ example: { apiKey: { file: key } } });
+  const status = credentialStore({ env: {}, home: directory }).status(path);
+  expect(status).toEqual({ profile: "example", source: "file", available: true, origin: ORIGIN, readOnly: true });
+  expect(JSON.stringify(status)).not.toContain(key);
+  expect(JSON.stringify(status)).not.toContain(path);
+});
+
+test("home reports only the binary name, not its path", () => {
+  const path = config({});
+  const result = localCommand(["home", "--config", path], credentialStore({ env: {}, home: directory }));
+  expect(typeof result.bin).toBe("string");
+  expect(isAbsolute(result.bin as string)).toBe(false);
+  expect(result.bin).not.toContain(sep);
+  expect(result.bin).not.toContain(directory);
 });
 
 test.each(["", "\uFEFF \r\n", "synthetic\r\nheader", "synthetic;header", "synthetic=header", "synthetic\u0000key"])("invalid file credentials are refused: %j", (value) => {

@@ -110,7 +110,7 @@ export function credentialStore(options: CredentialContext = {}, redactor = new 
     const profile = select(loaded.config, flag, explicit);
     credentials(profile);
     return { profile: profile.name, source: "env" in profile.apiKey ? "env" : "file", available: true,
-      origin: profile.origin, apiKey: profile.apiKey, config: loaded.path, readOnly: effectiveReadOnly(profile) };
+      origin: profile.origin, readOnly: effectiveReadOnly(profile) };
   }
   function list(explicit?: string) {
     readOnly();

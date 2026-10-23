@@ -145,6 +145,12 @@ test.each([
   expect(result.stdout).not.toContain("synthetic-user");
 });
 
+test("reviewed raw hash overview accepts the local row limit", async () => {
+  const sha = "a".repeat(64);
+  const result = await cli(["api", "get", `/overview/${sha}`, "--limit", "1"], [{ body: { sha256: sha, verdict: "malicious", threat_score: 90, reports: ["job-0", "job-1"] } }]);
+  expect(result.output).toMatchObject({ overview: { reports: ["job-0"] }, truncation: [{ path: "overview.reports", returned: 1, total: 2 }] });
+});
+
 test("reviewed raw Labs overview uses the experimental binding", async () => {
   const sha = "a".repeat(64);
   const result = await cli(["api", "get", `/sample/${sha}/overview`, "--labs", "--fields", "future"], [{ body: { sha256: sha, report_ids: { sandbox_job_ids: ["job"] }, future: "new" } }]);

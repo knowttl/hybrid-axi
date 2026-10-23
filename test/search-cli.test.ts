@@ -140,6 +140,36 @@ test.each([{}, [], { sha256, reports: "invalid" }])("malformed overview cannot b
   expect(result.output).toMatchObject({ error: { code: "MALFORMED_RESPONSE" } });
 });
 
+test("hash show limits reported report ids by default and with --limit", async () => {
+  const reports = Array.from({ length: 150 }, (_, index) => `synthetic-job-${index}`);
+  const body = { sha256, verdict: "malicious", threat_score: 90, reports };
+  const bounded = await cli(["hash", "show", sha256], [{ body }]);
+  expect(bounded.output).toMatchObject({ overview: { reports: reports.slice(0, 100) }, truncation: [{ path: "overview.reports", returned: 100, total: 150 }],
+    help: [`Run hybrid-axi hash show ${sha256} --limit 150`] });
+  const explicit = await cli(["hash", "show", sha256, "--limit", "2"], [{ body }]);
+  expect(explicit.output).toMatchObject({ overview: { reports: reports.slice(0, 2) }, truncation: [{ path: "overview.reports", returned: 2, total: 150 }] });
+});
+
+test("Labs hash show limits sandbox job ids", async () => {
+  const ids = Array.from({ length: 3 }, (_, index) => `synthetic-job-${index}`);
+  const result = await cli(["hash", "show", sha256, "--labs", "--limit", "2"], [{ body: { sha256, verdict: "malicious", threat_score: 80, report_ids: { sandbox_job_ids: ids } } }]);
+  expect(result.output).toMatchObject({ overview: { report_ids: { sandbox_job_ids: ids.slice(0, 2) } },
+    truncation: [{ path: "overview.report_ids.sandbox_job_ids", returned: 2, total: 3 }], help: [`Run hybrid-axi hash show ${sha256} --labs --limit 3`] });
+});
+
+test("hash search limits reported report ids while keeping the total count", async () => {
+  const reports = Array.from({ length: 150 }, (_, index) => ({ id: `synthetic-job-${index}` }));
+  const result = await cli(["hash", "search", "--hash", sha256], [{ body: { sha256s: [sha256], reports } }]);
+  expect(result.output).toMatchObject({ reports: reports.slice(0, 100), count: 150, truncation: [{ path: "reports", returned: 100, total: 150 }],
+    help: [`Run hybrid-axi hash search --hash ${sha256} --limit 150`] });
+});
+
+test("bulk hash search limits result rows", async () => {
+  const rows = [{ ...match, job_id: "synthetic-job-0" }, { ...match, job_id: "synthetic-job-1" }];
+  const result = await cli(["hash", "search", "--hashes-file", "<hashes-file>", "--limit", "1"], [{ body: rows }], { "hashes.txt": `${sha256}\n` });
+  expect(result.output).toMatchObject({ deprecated: true, results: [{ sha256, verdict: "malicious", job_id: "synthetic-job-0" }], count: 2, truncation: [{ path: "results", returned: 1, total: 2 }] });
+});
+
 test("hash search uses current GET and preserves report identifiers", async () => {
   const body = { sha256s: [sha256], reports: [{ id: "synthetic-job", verdict: "malicious" }] };
   const result = await cli(["hash", "search", "--hash", "b".repeat(128)], [{ body }]);
@@ -248,6 +278,8 @@ test.each([
   ["search", "run", "--query", "x", "--date-from", "2026-10-22", "--date-to", "2026-10-01"],
   ["search", "results", "../escape"], ["search", "results", "q", "--query", "x"],
   ["hash", "show", sha256, "--full", "--fields", "sha256"], ["hash", "show", sha256, "--labs", "--labs"],
+  ["hash", "show", sha256, "--limit", "0"], ["hash", "search", "--hash", sha256, "--limit", "many"],
+  ["search", "terms", "--filename", "synthetic.exe", "--limit", "2"],
 ])("invalid input sends nothing: %j", async (...argv) => {
   const result = await cli(argv, []);
   expect(result.code).toBe(2);
