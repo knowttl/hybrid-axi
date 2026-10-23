@@ -92,7 +92,8 @@ See [guarded writes and artifact handling](docs/design.md#guarded-writes-and-art
 `hybrid-axi report show <id>` reads the summary; `report state <id>` reads submission state.
 Use a job ID or `sha256:environmentId`.
 Container summary responses with HTTP 410 remain errors and point to `report children <id>`.
-`report memory list <id>` lists metadata; `report memory strings/hex <id> --filename <name>` reads structured extracted strings or hex rows without downloading raw memory.
+`report memory list <id>` lists metadata.
+`report memory strings <id> --filename <name>` and `report memory hex <id> --filename <name>` read structured extracted strings or hex rows without downloading raw memory.
 `report screenshots <id>` reads the documented Base64 screenshot array with bounded previews.
 
 `report file <id> --type <type> --output <new-file>` downloads exactly one artifact to an existing directory.
