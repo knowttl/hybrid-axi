@@ -16,6 +16,24 @@ const createBody = { identifier: "synthetic-rule", threat_categories: ["trojan"]
 const createArgs = () => ["hunting", "yara", "create", "--body-file", bodyFile];
 const updateArgs = () => ["hunting", "yara", "update", "rule-1", "--body-file", bodyFile];
 const matchArgs = ["hunting", "matches", "--items-count", "20", "--search-after", "2026-01-01T00:00:00Z"];
+
+test("YARA validation refusal exposes bounded redacted field diagnostics", async () => {
+  const body = { ...createBody, threat_categories: [], active: false, daily_notifications_limit: 0 };
+  writeFileSync(bodyFile, JSON.stringify(body));
+  await withFake([{ status: 400, body: { message: "Input data validation has failed", validation_errors: {
+    threat_categories: ["Choose a category"], rule: [`Invalid ${syntheticKey}`], token: "synthetic-token", detail: "x".repeat(5000),
+  } } }], async (fake) => {
+    const confirm = confirmation(await invoke(createArgs(), fake.fetch));
+    const result = await invoke([...createArgs(), "--execute", "--confirm", confirm], fake.fetch);
+    expect(result.code).toBe(1);
+    expect(result.output).toMatchObject({ error: { code: "UPSTREAM_ERROR", status: 400,
+      validation_errors: { threat_categories: ["Choose a category"], rule: ["Invalid ***redacted***"], token: "***redacted***", detail: "x".repeat(1000) } } });
+    expect(result.stdout).not.toContain(syntheticKey);
+    expect(result.stdout).not.toContain("synthetic-token");
+    expect(JSON.parse(fake.requests[0]!.body)).toEqual(body);
+    expect(fake.requests).toHaveLength(1);
+  });
+});
 beforeEach(() => {
   directory = mkdtempSync(join(tmpdir(), "hybrid-hunting-"));
   config = join(directory, "config.json");

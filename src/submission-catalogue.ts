@@ -69,6 +69,7 @@ export const submissionBodies = {
 const binding = (path: string, operationId: string, body: z.ZodType, multipart = false): OperationBinding & { operationId: string } => ({
   path: `/api/v2${path}`, operationId, method: "POST", effect: "write", body, bodyEncoding: multipart ? "multipart" : "form", decoder: submission, retrySafe: false,
 });
+const scanner = z.looseObject({ name: z.string(), available: z.boolean(), description: z.string(), supported_types: z.array(z.string()) });
 export const submissionBindings = {
   submitFile: binding("/submit/file", "e306d626e3fbbe3f10982ff88251b2b7", submissionBodies.submitFile, true),
   submitUrl: binding("/submit/url", "22e1723d4cec5c9b20d50715e4e5de8f", submissionBodies.submitUrl),
@@ -77,7 +78,7 @@ export const submissionBindings = {
   quickScanFile: { ...binding("/quick-scan/file", "711bd2a6c5b9f2b4c34e8af6554274e3", submissionBodies.quickScanFile, true), effect: "read", decoder: quickScan },
   quickScanUrl: { ...binding("/quick-scan/url", "458f96cf9b737894c0a7bd60f6e3f183", submissionBodies.quickScanUrl), effect: "read", decoder: quickScan },
   quickScanShow: { path: "/api/v2/quick-scan/{id}", operationId: "8b094dc6a7b763bfd4e25911ed8af72c", method: "GET", effect: "read", decoder: quickScan, retrySafe: false },
-  quickScanState: { path: "/api/v2/quick-scan/state", operationId: "04c731564495f3770c5d2e5d9971ecb2", method: "GET", effect: "read", decoder: z.looseObject({ name: z.string(), available: z.boolean(), description: z.string(), supported_types: z.array(z.string()) }) },
+  quickScanState: { path: "/api/v2/quick-scan/state", operationId: "04c731564495f3770c5d2e5d9971ecb2", method: "GET", effect: "read", decoder: z.union([z.array(scanner), scanner]) },
 } as const;
 
 export const submissionMutations: Readonly<Record<string, MutationOperation>> = Object.fromEntries(

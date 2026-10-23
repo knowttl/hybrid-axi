@@ -315,6 +315,15 @@ test("quick-scan scanners uses the documented service object", async () => {
   });
 });
 
+test("quick-scan scanners decodes and projects the observed scanner array", async () => {
+  const body = [{ name: "synthetic-scanner", available: true, description: "Synthetic", supported_types: ["text", "executable"] }];
+  await withFake([{ body }], async (fake) => {
+    const result = await invoke(["quick-scan", "scanners", "--fields", "name,available"], fake.fetch);
+    expect(result.code).toBe(0);
+    expect(result.output).toEqual({ scan: [{ name: "synthetic-scanner", available: true }] });
+  });
+});
+
 test.each([
   ["submit", "url", "--url", "https://example.com", "--environment-id", "999"],
   ["submit", "url", "--url", "https://user:pass@example.com", "--environment-id", "160"],

@@ -66,8 +66,9 @@ export async function quickScanCommand(parsed: NonNullable<ReturnType<typeof par
   const { entry, flags, body } = parsed;
   const response = await transport.request(entry.operation, entry.operation === "quickScanShow" ? { pathParams: { id: String(body.id) }, retry: false }
     : entry.operation === "quickScanState" ? { retry: false } : { body, retry: false });
-  const value = response.body as Record<string, unknown>;
+  const value = response.body as Record<string, unknown> | Record<string, unknown>[];
   const defaults = entry.operation === "quickScanState" ? ["name", "available", "description", "supported_types"] : ["id", "finished", "sha256"];
-  return { scan: flags["--full"] ? value : Object.fromEntries((flags["--fields"]?.split(",") ?? defaults)
-    .filter((key) => Object.hasOwn(value, key)).map((key) => [key, value[key]])) };
+  const select = (row: Record<string, unknown>) => flags["--full"] ? row : Object.fromEntries((flags["--fields"]?.split(",") ?? defaults)
+    .filter((key) => Object.hasOwn(row, key)).map((key) => [key, row[key]]));
+  return { scan: Array.isArray(value) ? value.map(select) : select(value) };
 }

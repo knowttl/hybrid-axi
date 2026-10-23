@@ -30,7 +30,7 @@ export type PreparedRequest = Readonly<{ operation: string; method: string; url:
 export class TransportError extends Error {
   constructor(readonly error: {
     code: string; message: string; operation: string; status?: number; keyLevel?: string;
-    requiredKeyLevel?: string; retryAfter?: number; rateLimits?: Record<string, unknown>; auditId?: string;
+    requiredKeyLevel?: string; retryAfter?: number; rateLimits?: Record<string, unknown>; auditId?: string; validation_errors?: unknown;
   }, readonly help: readonly string[] = []) {
     super(error.message);
     this.name = "TransportError";
@@ -242,13 +242,31 @@ export function constructTransport(options: { credential: Credential; origin?: s
             if (response.status === 403) fail("PERMISSION_DENIED", "API operation denied for this key", operation, details);
             if (response.status === 429) fail("RATE_LIMITED", "API rate limit reached", operation, details, ["Wait for the reported retry interval before a new invocation"]);
             let message = "Upstream API request failed";
+            let validationErrors: unknown;
             try {
               const body: unknown = JSON.parse(new TextDecoder().decode(raw));
               if (body && typeof body === "object" && "message" in body && typeof body.message === "string" && body.message.trim()) {
                 message = String(redact(body.message)).replace(/[\x00-\x1f\x7f]/g, " ").slice(0, 1000);
               }
+              if (body && typeof body === "object" && "validation_errors" in body) {
+                // Redact before truncating so a cut credential cannot escape the registry.
+                let nodes = 100, characters = 8000;
+                const bounded = (value: unknown, depth = 0): unknown => {
+                  if (--nodes < 0 || depth > 4 || characters <= 0) return "[truncated]";
+                  if (typeof value === "string") {
+                    const text = value.replace(/[\x00-\x1f\x7f]/g, " ").slice(0, Math.min(1000, characters));
+                    characters -= text.length;
+                    return text;
+                  }
+                  if (Array.isArray(value)) return value.slice(0, 20).map((child) => bounded(child, depth + 1));
+                  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).slice(0, 20)
+                    .map(([key, child]) => [key.replace(/[\x00-\x1f\x7f]/g, " ").slice(0, 100), bounded(child, depth + 1)]));
+                  return value;
+                };
+                validationErrors = bounded(redact(body.validation_errors));
+              }
             } catch { /* HTML and malformed failures do not expose raw bodies. */ }
-            fail("UPSTREAM_ERROR", message, operation, details);
+            fail("UPSTREAM_ERROR", message, operation, { ...details, ...(validationErrors !== undefined ? { validation_errors: validationErrors } : {}) });
           }
           let responseBody: unknown;
           if (reviewed.download) responseBody = raw;

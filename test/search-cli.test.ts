@@ -12,6 +12,43 @@ const sha256 = "a".repeat(64);
 const overview = { sha256, verdict: "malicious", threat_score: 90, reports: ["synthetic-job"] };
 const match = { sha256, verdict: "malicious", submit_name: "synthetic.exe" };
 const completed = [{ query_status: "finished", number_of_results: 1, number_of_pages: 1, results: [match] }];
+
+test("terms accepts the observed object envelope and nullable sample fields", async () => {
+  const body = { search_terms: [{ id: "filename", value: "synthetic.com" }], count: 1, result: [{
+    sha256, verdict: null, av_detect: null, threat_score: null, vx_family: null, job_id: "synthetic-job",
+    environment_id: 160, analysis_start_time: "2026-01-01", submit_name: "synthetic.com",
+    environment_description: "Synthetic", size: 1, type: null, type_short: "text",
+  }] };
+  const result = await cli(["search", "terms", "--filename", "synthetic.com"], [{ body }]);
+  expect(result.code).toBe(0);
+  expect(result.output).toMatchObject({ count: 1, searches: [{ search_terms: body.search_terms, result: [{ sha256, verdict: null, threat_score: null }] }] });
+});
+
+test.each([`sha256:${sha256}`, "verdict:malicious AND score:80+ AND positives:10+"])("observed Labs object results decode for %s", async (query) => {
+  const body = { ...completed[0], results: [{ ...match, type_short: ["text", "executable"], last_seen: "2026-01-01" }], future: { useful: true } };
+  const result = await cli(["search", "run", "--query", query, "--size", "1", "--full"], [{ body }]);
+  expect(result.code).toBe(0);
+  expect(result.output).toMatchObject({ experimental: true, searches: [body] });
+  expect(result.requests).toHaveLength(1);
+});
+
+test("object async start exposes the query ID and resumes an object result", async () => {
+  const result = await cli(["search", "run", "--query", "synthetic"], [
+    { status: 202, body: { id: "synthetic-query" } }, { body: { query_status: "processing" } },
+  ]);
+  expect(result.code).toBe(0);
+  expect(result.output).toMatchObject({ id: "synthetic-query", state: "pending", help: ["Run hybrid-axi search results synthetic-query"] });
+  expect(result.requests.map(({ url }) => url)).toEqual(["/api/labs/search/query/run", "/api/labs/search/query/synthetic-query/results"]);
+});
+
+test.each([
+  { argv: ["search", "terms", "--filename", "synthetic"], body: { count: "1", result: [] } },
+  { argv: ["search", "run", "--query", "synthetic"], body: { query_status: "finished", results: [{ sha256: 1 }] } },
+])("object envelopes still reject invalid consumed fields: $argv", async ({ argv, body }) => {
+  const result = await cli(argv, [{ body }]);
+  expect(result.code).toBe(1);
+  expect(result.output).toMatchObject({ error: { code: "MALFORMED_RESPONSE" } });
+});
 afterEach(() => vi.useRealTimers());
 
 async function cli(argv: string[], replies: Reply[], files: Record<string, string> = {}) {

@@ -151,6 +151,7 @@ Unknown quota fields pass through after sensitive-field redaction.
 The documented `apikey` quota block appears as `keyQuota` so it remains distinguishable from credential fields during redaction.
 Transport errors use a structured `error` object with code, operation and any known status, key level or retry interval.
 When a response was received, `error.rateLimits` preserves its allowlisted header observations, including on 429 and other failures.
+An `UPSTREAM_ERROR` includes `error.validation_errors` when supplied by the API, with redacted, bounded field diagnostics; inspect these when a schema-valid YARA body is rejected.
 Download denials distinguish an inspected restricted key from an unknown key level and explain the account-vetting requirement.
 See the design's [key-level inspection and error contracts](docs/design.md#transport-and-bounded-work) for download 403 handling.
 
@@ -183,7 +184,8 @@ Neither query starts nor result retrieval are automatically replayed.
 
 Hash and search commands use compact output by default.
 `--full` exposes all decoded fields; `--fields <comma-separated-names>` selects fields at each response level, including new experimental fields, after sensitive-field redaction.
-Labs response envelopes remain array-shaped under `searches`, with result rows under `results`.
+Term and Labs searches accept object or array response envelopes and normalize them to an array under `searches`; term rows use `result` and Labs rows use `results`.
+A single Labs result envelope with a validated query ID also exposes that ID at the top level; responses without an ID do not invent one.
 
 ## Shared write guards
 
@@ -228,7 +230,9 @@ Both are explicit read exceptions with no write gate, including under read-only 
 They send once without automatic replay, even after a timeout or explicit retryable HTTP failure.
 `quick-scan show <id>` reads a known scan's `id`, `finished` and `sha256` without another upload.
 `quick-scan scanners` reads the documented scanner service availability and supported types.
+Its `scan` output preserves the upstream shape: an array for a scanner list or an object for a single scanner.
 Quick-scan reads support `--fields` and `--full` after sensitive-field redaction.
+For scanner lists, field selection applies to each scanner.
 No live submission or quick scan is part of automated verification.
 
 ## Experimental hunting
@@ -300,13 +304,13 @@ Raw reads cannot supply headers, credentials, origins or larger budgets.
 
 ## Deviations from the prompt
 
-This is the complete deviation list from the pinned public specifications and synthetic contract tests, rather than observed live API behavior.
-No live API acceptance has run yet.
+These original deviations came from specification review and synthetic contract tests.
+See the design for later authorized live acceptance's [response-contract differences and verification limits](docs/design.md#deviations-from-the-prompt).
 The [pinned sources](inventory/specs.json) and [operation ledger](docs/design.md#complete-operation-ledger) record the evidence.
 
 1. Stable hash lookup is now `GET /search/hash`; POST hash lookup is deprecated, as are bulk `/search/hashes` and `/report/summary`.
 2. Labs `search run` can return synchronous 200 results or asynchronous 202 query IDs; it is not invariably an async two-request exchange.
-   Its schemas wrap results/IDs in arrays, and async status is `query_status`; preserve the pinned shape rather than inventing a job envelope.
+   Async status is `query_status`; see [Hash and search](#hash-and-search) for supported response envelopes and normalized output.
 3. Labs recent hunting matches are consuming GETs: returned matches are marked delivered and will not be returned again.
    No non-consuming matches-list alternative appears in the snapshot; this command is a guarded write by explicit decision.
 4. Overview refresh is a GET that fetches fresh external-service data; it is blocked rather than exposed as a raw read.

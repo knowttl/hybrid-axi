@@ -75,8 +75,10 @@ Honor valid `Retry-After` seconds or HTTP dates; return `RATE_LIMITED` with retr
 Never automatically replay an ambiguous timeout, including safe reads, quick scans, search starts, guarded downloads and mutations.
 Quick scans and search starts are single-send even though classified as reads; separate result/status reads can resume known IDs.
 
-Translate errors into `error: {code, message, operation, status?, keyLevel?, requiredKeyLevel?, retryAfter?, rateLimits?, auditId?}` plus useful next-step hints.
+Translate errors into `error: {code, message, operation, status?, keyLevel?, requiredKeyLevel?, retryAfter?, rateLimits?, auditId?, validation_errors?}` plus useful next-step hints.
 Handle the documented `{message}` error, empty/malformed bodies and HTML failures without raw dependency output or stack traces.
+For `UPSTREAM_ERROR`, preserve supplied `validation_errors`, redacting before applying diagnostic bounds.
+Bound traversal to depth 4 and a 100-node budget, with at most 20 entries per container, 100 characters per key, 1,000 characters per string and an 8,000-character string-value budget; replace control characters with spaces and mark traversal limits as `[truncated]`.
 401 is `AUTH_REQUIRED`; 403 is permission denial, never an empty result.
 For a download 403, use known `/key/current` `auth_level_name` and the operation's `x-auth-level` where available.
 If the key level is unknown, inspect `/key/current` once without retries, within the same invocation deadline and request/JSON byte budgets.
@@ -337,7 +339,21 @@ Blocked rows identify replacements or explain exclusions; they do not silently a
 ## Deviations from the prompt
 
 The release [README deviation list](../README.md#deviations-from-the-prompt) owns all 18 findings, including their implementation consequences.
-They are specification findings rather than observed live-API behavior; no live behavior was probed during design or automated verification.
+Those original findings came from specification review.
+Later authorized live acceptance found the following differences from the pinned snapshots; automated verification remains offline with synthetic fixtures.
+
+- Stable `POST /search/terms` documents an array of `SampleTermsSearch`, but live responses contain one object with `search_terms`, `count` and `result`.
+  Accept both envelopes and normalize to the existing `searches` collection; nullable sample verdict and score remain valid.
+- Labs `POST /search/query/run` documents arrays of `SearchResults` (200) or `SearchId` (202), but both observed 200 replies contain a single result object.
+  Accept object and array envelopes, preserve unknown Labs fields, and expose a validated query ID when supplied.
+  Apply the same envelope compatibility to query-result retrieval and queued starts for continuation; these object variants and the async lifecycle still need live verification because only synchronous 200 result objects were observed.
+- Stable `GET /abuse-reports/feed` documents `falcon_mal_query_results`, but live responses use `results` with the documented pagination metadata.
+  Accept both field names and project the observed rows through the same local bounds and generated continuation.
+- Stable `GET /quick-scan/state` describes a scanner list but its response schema references a single `QuickScanService`; live responses are arrays of those objects.
+  Accept both shapes and apply field selection to each scanner in a list.
+- Labs YARA create returned 400 for a body with the documented required names, empty `threat_categories`, `active: false`, and `daily_notifications_limit: 0`.
+  The pinned schema specifies neither a minimum category count nor a minimum notification limit or dependency between these fields, so the refusal does not justify changing the request body.
+  Surface redacted `validation_errors` with bounded depth, entries and text instead; the actual rejected field and successful YARA lifecycle require a separately authorized live re-run.
 
 ## Confirmed safety decisions
 

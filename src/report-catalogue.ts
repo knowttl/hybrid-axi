@@ -7,6 +7,8 @@ const integer = z.number().int().nullable();
 const strings = z.array(z.string());
 const object = (shape: z.ZodRawShape) => z.looseObject(shape);
 const filename = z.strictObject({ filename: z.string().min(1).max(4096) });
+const abuseRows = z.array(object({ sha256: z.string(), deleted_at: text }));
+const abusePage = { number_of_results: z.number().int().nonnegative(), number_of_pages: z.number().int().nonnegative(), link_to_next_page: text };
 const common = {
   "--help": "Show help; default false", "--config": "Config path; default platform config",
   "--profile": "Profile name; default profile precedence", "--fields": "Comma-separated response fields; default compact fields",
@@ -43,8 +45,11 @@ export const reportReads: Readonly<Record<string, ReadDefinition>> = {
     "Read the most recent report feed, capped upstream at 250", ["report_id", "sha256", "verdict", "verdict_human"], { rows: true, cap: 250 }),
   "feed quick-scan": read("/feed/quick-scan", "6f846a8bc0bc73e905408f2e6da577a7", z.array(object({ quick_scan_id: text, sha256: text, verdict: integer.optional(), verdict_human: text.optional() })),
     "Read the most recent successful quick scans, capped upstream at 2500", ["quick_scan_id", "sha256", "verdict", "verdict_human"], { rows: true, cap: 2500 }),
-  "feed abuse": read("/abuse-reports/feed", "d97c84ba3099decb501ba37e993ad225", object({ number_of_results: z.number().int().nonnegative(), number_of_pages: z.number().int().nonnegative(), link_to_next_page: text, falcon_mal_query_results: z.array(object({ sha256: z.string(), deleted_at: text })) }),
-    "Read one page of qualified-removal hashes", ["sha256", "deleted_at"], { rows: "falcon_mal_query_results", total: "number_of_results", query: z.strictObject({ page: z.number().int().positive().optional() }) }),
+  "feed abuse": read("/abuse-reports/feed", "d97c84ba3099decb501ba37e993ad225", z.union([
+    object({ ...abusePage, results: abuseRows }),
+    object({ ...abusePage, falcon_mal_query_results: abuseRows }).transform((page) => ({ ...page, results: page.falcon_mal_query_results })),
+  ]),
+    "Read one page of qualified-removal hashes", ["sha256", "deleted_at"], { rows: "results", total: "number_of_results", query: z.strictObject({ page: z.number().int().positive().optional() }) }),
   "system version": read("/system/version", "145769f29b3862d158e74b6ddda845f1", object({ sandbox: z.string(), api: z.string() }), "Read system versions", ["sandbox", "api"]),
   "system environments": read("/system/environments", "bd68b15f49c59048688402da2a9d5b90", z.array(object({ environment_id: z.number().int(), description: z.string(), architecture: z.string(), analysis_mode: z.string() })),
     "List execution environments", ["environment_id", "description", "architecture", "analysis_mode"], { rows: true }),
