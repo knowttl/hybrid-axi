@@ -57,7 +57,8 @@ export function parseReport(argv: string[]) {
     operation = command === "hash file" ? "hash-download-bin" : guarded ? guardedArtifacts[type as keyof typeof guardedArtifacts].operation : `report artifact ${type}`;
   } else if (command === "api get") {
     const path = positional[0]!;
-    const [pathname, queryText] = path.split("?");
+    const [rawPathname, queryText] = path.split("?");
+    const pathname = rawPathname && !rawPathname.startsWith("/") ? `/${rawPathname}` : rawPathname;
     try { decodeURIComponent(queryText ?? ""); } catch { usage("Invalid API query encoding"); }
     if (!pathname?.startsWith("/") || /[\\%#\x00-\x20\x7f]/u.test(pathname) || pathname.includes("//") || path.split("?").length > 2
       || pathname.split("/").some((part) => part === "." || part === "..")) usage("Use a relative reviewed API path without encoding or traversal");

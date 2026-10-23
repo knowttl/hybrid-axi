@@ -298,7 +298,8 @@ Collections have a separate local `--limit` default of 100, including under `--f
 Feed totals remain unknown unless the response supplies one; current feeds describe only their capped recent window.
 The CLI provides a rerun command whenever local truncation occurs and does not invent pagination for unpaged endpoints.
 
-`api get <path>` accepts a relative API path such as `/report/<id>/summary` or `/report/<id>/memory-dump/hex-dump?filename=<name>`.
+`api get <path>` accepts a relative API path with or without a leading slash, such as `report/<id>/summary` or `/report/<id>/memory-dump/hex-dump?filename=<name>`.
+An omitted leading slash is added before the existing path validation.
 It serves only bound report/feed/system JSON reads, key inspection/quota, stable hash overview/lookup, experimental Labs overview and query results.
 Use `--labs` for a Labs path such as `/sample/<sha256>/overview`.
 Query keys must match the selected operation's strict schema; duplicate and malformed parameters fail before credentials are resolved.
