@@ -5,7 +5,7 @@ import type { Transport } from "./transport-core.js";
 
 export function parseSubmission(argv: string[]) {
   let prefix = 0;
-  while (["--config", "--profile"].includes(argv[prefix] ?? "") && argv[prefix + 1] && !argv[prefix + 1]!.startsWith("-")) prefix += 2;
+  while (["--config", "--profile"].includes(argv[prefix] ?? "") && argv[prefix + 1]) prefix += 2;
   argv = [...argv.slice(prefix), ...argv.slice(0, prefix)];
   const command = argv.slice(0, 2).join(" ");
   if (!Object.hasOwn(submissionCatalogue, command)) return undefined;
@@ -22,7 +22,7 @@ export function parseSubmission(argv: string[]) {
     if (["--help", "--execute", "--dry-run", "--full"].includes(word)) flags[word] = "true";
     else {
       const value = argv[++index];
-      if (!value?.trim() || value.startsWith("-")) usage(`Flag requires a value: ${word}`);
+      if (!value?.trim()) usage(`Flag requires a value: ${word}`);
       flags[word] = value!;
     }
   }

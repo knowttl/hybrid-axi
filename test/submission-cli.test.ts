@@ -8,6 +8,7 @@ import { main } from "../src/cli.js";
 import { mutationOperations, transportBindings } from "../src/catalogue.js";
 import { constructTransport } from "../src/transport-core.js";
 import { constructWriteCoordinator } from "../src/writes-core.js";
+import { parseSubmission } from "../src/submissions.js";
 import { fakeHttpsHybrid, fakeTransport, syntheticKey, type Reply } from "./support/fake-hybrid.js";
 
 let directory: string, config: string, sample: string, journal: string, env: NodeJS.ProcessEnv;
@@ -56,6 +57,11 @@ async function withFake(replies: Reply[], run: (fake: Awaited<ReturnType<typeof 
 }
 const fileArgs = () => ["submit", "file", "--file", sample, "--environment-id", "160"];
 const urlArgs = ["submit", "url", "--url", "https://example.com/sample?a=1&b=2", "--environment-id", "160"];
+
+test.each(["--config", "--profile"])("dash-leading %s selectors work before and after the command", (flag) => {
+  expect(parseSubmission([flag, "-synthetic", ...urlArgs])?.flags[flag]).toBe("-synthetic");
+  expect(parseSubmission([...urlArgs, flag, "-synthetic"])?.flags[flag]).toBe("-synthetic");
+});
 
 test("file preview discloses visibility, names sample and environment and sends nothing", async () => {
   await withFake([], async (fake) => {
@@ -122,20 +128,20 @@ test.each([
 
 test("URL submission preserves the exact URL and explicit options without deprecated defaults", async () => {
   await withFake([{ status: 201, body: submitted }], async (fake) => {
-    const argv = [...urlArgs, "--network-settings", "simulated", "--script-logging", "false", "--priority", "4"];
+    const argv = [...urlArgs, "--network-settings", "simulated", "--script-logging", "false", "--priority", "4", "--custom-cmd-line", "--silent"];
     const preview = await invoke(argv, fake.fetch);
     expect(preview.output).toMatchObject({ preview: { target: { url: urlArgs[3], environment_id: 160 } } });
     const result = await invoke([...argv, "--execute", "--confirm", confirmation(preview)], fake.fetch);
     expect(result.code).toBe(0);
     expect(fake.requests).toHaveLength(1);
     expect(fake.requests[0]).toMatchObject({ url: "/api/v2/submit/url", headers: { "content-type": "application/x-www-form-urlencoded" } });
-    expect(Object.fromEntries(new URLSearchParams(fake.requests[0]!.body))).toEqual({ url: urlArgs[3], environment_id: "160", network_settings: "simulated", script_logging: "false", priority: "4" });
+    expect(Object.fromEntries(new URLSearchParams(fake.requests[0]!.body))).toEqual({ url: urlArgs[3], environment_id: "160", network_settings: "simulated", script_logging: "false", priority: "4", custom_cmd_line: "--silent" });
   });
 });
 
 test("document passwords are sent explicitly but redacted from previews and output", async () => {
   await withFake([{ status: 201, body: submitted }], async (fake) => {
-    const argv = [...fileArgs(), "--document-password", "synthetic-document-password"];
+    const argv = [...fileArgs(), "--document-password", "--synthetic-document-password"];
     const preview = await invoke(argv, fake.fetch);
     expect(preview.stdout).not.toContain("synthetic-document-password");
     expect(preview.output).toMatchObject({ preview: { proposed: { body: { document_password: "***redacted***" } } } });
@@ -144,7 +150,7 @@ test("document passwords are sent explicitly but redacted from previews and outp
     expect(result.stdout).not.toContain("synthetic-document-password");
     const request = fake.requests[0]!;
     const form = await new Response(new Uint8Array(request.bytes), { headers: { "content-type": String(request.headers["content-type"]) } }).formData();
-    expect(form.get("document_password")).toBe("synthetic-document-password");
+    expect(form.get("document_password")).toBe("--synthetic-document-password");
   });
 });
 
@@ -223,7 +229,7 @@ test.each(["file", "url"])("quick-scan %s transmits under forced read-only witho
   configure(false);
   env.HYBRID_AXI_READ_ONLY = "true";
   await withFake([{ status: 201, body: scanned }], async (fake) => {
-    const argv = ["quick-scan", type, type === "file" ? "--file" : "--url", type === "file" ? sample : "https://example.com", "--scan-type", "all_lookup"];
+    const argv = ["quick-scan", type, type === "file" ? "--file" : "--url", type === "file" ? sample : "https://example.com", "--scan-type", "all_lookup", "--comment", "--synthetic-comment", "--submit-name", "-sample"];
     const result = await invoke(argv, fake.fetch);
     expect(result.output).toEqual({ scan: scanned });
     expect(result.code).toBe(0);
@@ -233,7 +239,9 @@ test.each(["file", "url"])("quick-scan %s transmits under forced read-only witho
       const form = await new Response(fake.requests[0]!.body, { headers: { "content-type": String(fake.requests[0]!.headers["content-type"]) } }).formData();
       expect(await (form.get("file") as File).text()).toBe(inert);
       expect(form.get("scan_type")).toBe("all_lookup");
-    } else expect(Object.fromEntries(new URLSearchParams(fake.requests[0]!.body))).toEqual({ url: "https://example.com", scan_type: "all_lookup" });
+      expect(form.get("comment")).toBe("--synthetic-comment");
+      expect(form.get("submit_name")).toBe("-sample");
+    } else expect(Object.fromEntries(new URLSearchParams(fake.requests[0]!.body))).toEqual({ url: "https://example.com", scan_type: "all_lookup", comment: "--synthetic-comment", submit_name: "-sample" });
     expect(existsSync(journal)).toBe(false);
   });
 });
@@ -269,6 +277,10 @@ test.each([
   ["submit", "url", "--url", "https://example.com", "--environment-id", "999"],
   ["submit", "url", "--url", "https://user:pass@example.com", "--environment-id", "160"],
   ["submit", "url", "--url", "https://example.com", "--environment-id", "160", "--offline-analysis", "true"],
+  ["submit", "url", "--url", "https://example.com", "--environment-id", "160", "--custom-cmd-line", "--silent", "--unknown"],
+  ["submit", "url", "--url", "https://example.com", "--environment-id", "160", "--comment"],
+  ["submit", "url", "--url", "https://example.com", "--environment-id", "160", "--comment", " "],
+  ["submit", "url", "--url", "https://example.com", "--environment-id", "160", "--priority", "-1"],
   ["submit", "dropped-file", "--id", "report", "--file-hash", "bad"],
   ["quick-scan", "file", "--file", "missing.bin", "--scan-type", "all"],
   ["quick-scan", "url", "--url", "https://example.com", "--scan-type", "typo"],
