@@ -150,10 +150,10 @@ Additional command contracts are:
 | `doctor` | Bounded `/key/current` and `/key/submission-quota` reads, no retries or samples. | keyLevel, quota, rateLimits |
 | `quota` | Same two key operations, body usage plus observed limit headers. | keyLevel, quota, rateLimits |
 | `hash show <sha256>` | Stable overview; `--labs` selects experimental sample overview. | sha256, verdict, threat_score, reports/report_ids |
-| `hash search` | Exactly one `--hash` or `--hashes-file`; bulk POST only for the latter. | sha256, verdict, threat_score, report ID |
+| `hash search` | Exactly one `--hash` or `--hashes-file`; bulk POST only for the latter. | See [shipped output](../README.md#hash-and-search). |
 | `search terms` | Documented named filters only; strict nonempty input. | sha256, verdict, threat_score, report ID |
 | `search run` | Experimental Labs query, `--query`, `--size` (default 50, max 200), `--page`, `--date-from`, `--date-to`; starts once and retrieves results within the deadline. | sha256, verdict, score, query status |
-| `search results <id>` | Experimental resumable results read, never reruns the query. | id, query_status, count, results |
+| `search results <id>` | Experimental resumable results read, never reruns the query. | See [shipped output](../README.md#hash-and-search). |
 | `report show/state <id>` | Job ID or `sha256:environmentId`; summary and state respectively. | id, state, verdict, threat_score |
 | `report file <id>` | Exactly one `--type` and explicit new `--output`; one artifact per call, type determines gate below. | id, type, output, bytes |
 | `quick-scan file/url` | `--file` or `--url`, documented `--scan-type`; read-class but transmits the supplied sample/URL. | id, finished, sha256 |
@@ -182,8 +182,7 @@ Exit 0 means success/no-op, 1 runtime failure and 2 usage error.
 Structured errors and data go to stdout; progress and diagnostics go to stderr.
 Bare `-v`, `-V` and `--version` print only the version before dynamically importing the command graph.
 
-A confirmed no-analysis state is success with `state: no-analysis`, the queried hash and `help: hybrid-axi hash search --hash <sha256>` to check associated reports.
-An empty hash search explicitly reports zero reports and offers `hybrid-axi submit file --file <path> --environment-id <id>` as a preview-only next step.
+See [README's hash and search contract](../README.md#hash-and-search) for shipped empty states and recovery commands.
 Never auto-submit, quick-scan or refresh a missing hash.
 The specs do not define a unique missing-analysis status/body, so implementation must distinguish confirmed absence from 401/403, malformed success and generic 404.
 Labs 425 means analysis is in progress, not absent: return explicit pending state and retry guidance without resubmitting.
