@@ -14,8 +14,19 @@ test.each(["doctor", "quota"])("%s resolves the selected private SecretRef and r
   const key = join(directory, "key");
   writeFileSync(key, `${syntheticKey}\n`, { mode: 0o600 });
   writeFileSync(config, JSON.stringify({ version: 1, profiles: { example: { apiKey: { file: key } } } }), { mode: 0o600 });
-  const fake = await fakeHttpsHybrid([{ body: keyBody, headers: { "Api-Limits": JSON.stringify({ remaining: 8,
-    echoed: `${syntheticKey} ${encodeURIComponent(syntheticKey)}`, token: "synthetic-other-token" }) } }, { body: quotaBody }]);
+  const diagnosticHeaders = { "api-version": "2.35", "Webservice-Version": `service-${syntheticKey}`,
+    "Retry-After": "Thu, 01 Jan 2026 00:01:00 GMT", "RateLimit": '"default";r=8;t=60',
+    "RateLimit-Policy": '"default";q=10;w=60', "RateLimit-Limit": "10", "RateLimit-Remaining": "8", "RateLimit-Reset": "60",
+    "X-RateLimit-Limit": "20", "X-RateLimit-Remaining": "18", "X-RateLimit-Reset": "120",
+    "Set-Cookie": "synthetic-cookie", "X-Unrelated": "unrelated-value" };
+  const observedHeaders = { "Api-Version": { value: "2.35" }, "Webservice-Version": { value: "service-***redacted***" },
+    "Retry-After": { value: "Thu, 01 Jan 2026 00:01:00 GMT" }, "RateLimit": { value: '"default";r=8;t=60' },
+    "RateLimit-Policy": { value: '"default";q=10;w=60' }, "RateLimit-Limit": { value: "10" },
+    "RateLimit-Remaining": { value: "8" }, "RateLimit-Reset": { value: "60" }, "X-RateLimit-Limit": { value: "20" },
+    "X-RateLimit-Remaining": { value: "18" }, "X-RateLimit-Reset": { value: "120" } };
+  const fake = await fakeHttpsHybrid([{ body: keyBody, headers: { ...diagnosticHeaders, "Api-Limits": JSON.stringify({ remaining: 8,
+    echoed: `${syntheticKey} ${encodeURIComponent(syntheticKey)}`, token: "synthetic-other-token" }) } },
+  { body: quotaBody, headers: diagnosticHeaders }]);
   let stdout = "";
   try {
     await main([command, "--config", config, "--profile", "example"], {
@@ -31,6 +42,11 @@ test.each(["doctor", "quota"])("%s resolves the selected private SecretRef and r
     expect(stdout).not.toContain(encodeURIComponent(syntheticKey));
     expect(stdout).not.toContain("synthetic-other-token");
     expect(stdout).not.toContain("synthetic-user");
+    expect(decode(stdout)).toMatchObject({ rateLimits: {
+      key: observedHeaders, quota: observedHeaders,
+    } });
+    expect(stdout).not.toContain("synthetic-cookie");
+    expect(stdout).not.toContain("unrelated-value");
     expect(fake.requests).toHaveLength(2);
     expect(fake.requests[0]!.headers["api-key"]).toBe(syntheticKey);
   } finally { await fake.close(); rmSync(directory, { recursive: true, force: true }); }

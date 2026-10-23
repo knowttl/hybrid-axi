@@ -220,6 +220,11 @@ export function constructTransport(options: { credential: Credential; origin?: s
               catch { rateLimits[name] = { malformed: true }; }
             }
           }
+          for (const name of ["Api-Version", "Webservice-Version", "Retry-After", "RateLimit", "RateLimit-Policy",
+            "RateLimit-Limit", "RateLimit-Remaining", "RateLimit-Reset", "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"]) {
+            const value = response.headers.get(name);
+            if (value !== null) rateLimits[name] = { value: String(redact(value)).slice(0, 1000) };
+          }
           return { status: response.status, body: reviewed.download ? decoded.data : redact(decoded.data), rateLimits };
         } catch (error) {
           if (error instanceof TransportError) throw error;
