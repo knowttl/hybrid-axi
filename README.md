@@ -101,7 +101,7 @@ The sample and its report can become visible to the community.
 File confirmation binds the SHA256, byte count, filename, selected environment and complete request digest; file bytes are verified again before sending.
 Uploads accept regular files up to 250 MiB.
 URL confirmation binds the exact HTTP(S) URL and environment; embedded URL credentials are refused.
-The documented environments are `100`, `110`, `120`, `140`, `160`, `200`, `330` and `430`.
+Run the selected command with `--help` for its accepted environment IDs.
 Optional documented analysis settings are explicit flags; no anti-evasion or deprecated network flags are enabled implicitly.
 Run command help for the available settings.
 Submission and quick-scan value flags accept `--flag value` or `--flag=value`; dash-leading values require the latter, for example `--custom-cmd-line='--silent'`.
