@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { decode } from "@toon-format/toon";
-import { afterEach, expect, test, vi } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import { main } from "../src/cli.js";
 import { transportBindings } from "../src/catalogue.js";
 import { constructTransport } from "../src/transport-core.js";
@@ -146,6 +146,23 @@ test("synchronous Labs results return without starting or fetching another page"
   expect(result.requests).toHaveLength(1);
   expect(result.requests[0]).toMatchObject({ method: "POST", url: "/api/labs/search/query/run", headers: { "content-type": "application/json" } });
   expect(JSON.parse(result.requests[0]!.body)).toEqual({ query: "verdict:malicious", size: 200, page: 2, date_from: "2026-10-01", date_to: "2026-10-22" });
+});
+
+describe.each([
+  { path: "synchronous run", argv: ["search", "run", "--query", "synthetic", "--page", "2"], start: [] },
+  { path: "asynchronous run", argv: ["search", "run", "--query", "synthetic"], start: [{ status: 202, body: [{ id: "synthetic-query" }] }] },
+  { path: "standalone results", argv: ["search", "results", "synthetic-query"], start: [] },
+])("empty Labs results through $path", ({ argv, start }) => {
+  test.each([
+    { total: 0, message: "No samples match this query" },
+    { total: 1, message: "No samples on this result page" },
+    { total: undefined, message: "No samples on this result page" },
+  ])("scopes the empty message to the known total: $total", async ({ total, message }) => {
+    const body = [{ query_status: "finished", number_of_results: total, number_of_pages: 1, results: [] }];
+    const result = await cli(argv, [...start, { body }]);
+    expect(result.code).toBe(0);
+    expect(result.output).toMatchObject({ state: "empty", message, searches: [{ query_status: "finished", results: [] }] });
+  });
 });
 
 test("asynchronous Labs start fetches results once without duplicating the start", async () => {

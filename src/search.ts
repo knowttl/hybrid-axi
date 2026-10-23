@@ -153,5 +153,7 @@ export async function searchCommand(parsed: NonNullable<ReturnType<typeof parseS
   return { experimental, ...(id ? { id } : {}), ...(start && flags["--full"] ? { start } : {}),
     searches: results.map((row) => ({ ...select(row, ["number_of_results", "number_of_pages", "query_status"]),
       ...(row.results ? { results: row.results.map((sample) => select(sample, ["sha256", "verdict", "score", "submit_name"])) } : {}) })),
-    ...(pending ? { state: "pending", ...(id ? { help: [resume(id)] } : {}) } : results.every((row) => row.results?.length === 0) ? { state: "empty", message: "No samples match this query" } : {}) };
+    ...(pending ? { state: "pending", ...(id ? { help: [resume(id)] } : {}) } : results.every((row) => row.results?.length === 0) ? {
+      state: "empty", message: results.every((row) => row.number_of_results === 0) ? "No samples match this query" : "No samples on this result page",
+    } : {}) };
 }
