@@ -307,7 +307,7 @@ test("an explicit HTTP denial records failure without replay", async () => {
   } finally { await fake.close(); }
 });
 
-test("the production coordinator exposes no write operations in this slice", async () => {
+test("the production coordinator blocks unregistered write operations", async () => {
   const writes = createWriteCoordinator({ config }, { env, home: directory });
   await expect(writes.run("synthetic-write", input)).rejects.toMatchObject({ error: { code: "OPERATION_BLOCKED" } });
   expect(existsSync(log)).toBe(false);

@@ -103,7 +103,7 @@ export function constructTransport(options: { credential: Credential; origin?: s
         if (download) downloadBytes += chunk.value.byteLength;
         else jsonBytes += chunk.value.byteLength;
         if (download ? downloadBytes > 250 * 1024 * 1024 : jsonBytes > 20 * 1024 * 1024) {
-          fail("LIMIT_EXCEEDED", "Invocation response byte limit exceeded", operation);
+          fail("LIMIT_EXCEEDED", "Invocation response byte limit exceeded", operation, { status: response.status });
         }
         chunks.push(chunk.value);
       }
@@ -192,7 +192,7 @@ export function constructTransport(options: { credential: Credential; origin?: s
           }
           if (reviewed.download && response.ok && Number(response.headers.get("content-length")) > 250 * 1024 * 1024 - downloadBytes) {
             await response.body?.cancel();
-            fail("LIMIT_EXCEEDED", "Invocation response byte limit exceeded", operation);
+            fail("LIMIT_EXCEEDED", "Invocation response byte limit exceeded", operation, { status: response.status });
           }
           const raw = await readBody(response, operation, Boolean(reviewed.download && response.ok));
           const header = response.headers.get("retry-after");
@@ -222,6 +222,10 @@ export function constructTransport(options: { credential: Credential; origin?: s
             const details = { status: response.status, ...(retryAfter !== undefined ? { retryAfter } : {}) };
             if (response.status === 401) fail("AUTH_REQUIRED", "API authentication failed", operation, details, ["Run hybrid-axi auth status"]);
             if (response.status === 403 && reviewed.download) {
+              if (keyLevel === undefined && bindings["key.current"]) {
+                try { await this.request("key.current", { retry: false }); }
+                catch { /* Keep the original denial and an explicitly unknown level. */ }
+              }
               const restricted = keyLevel === "restricted";
               fail(restricted ? "KEY_LEVEL_RESTRICTED" : "PERMISSION_DENIED",
                 restricted ? "Restricted key: account vetting is needed for download access"

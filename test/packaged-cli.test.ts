@@ -81,15 +81,16 @@ test.each([
   expect(result.stderr).toBe("");
 });
 
-test("packed inventory enables only reviewed key, search and report reads", async () => {
+test("packed inventory enables only reviewed reads and guarded downloads", async () => {
   const { pathToFileURL } = await import("node:url");
   const { transportBindings } = await import(pathToFileURL(join(packageRoot, "dist/src/catalogue.js")).href);
   expect(Object.keys(transportBindings).sort()).toEqual([
     "feed abuse", "feed detonation", "feed latest", "feed quick-scan",
-    "hashOverview", "hashSearch", "hashesSearch", "key.current", "key.submission-quota", "labsOverview", "queryResults", "queryRun",
+    "hash-download-bin", "hashOverview", "hashSearch", "hashesSearch", "key.current", "key.submission-quota", "labsOverview", "queryResults", "queryRun",
     "report artifact crt", "report artifact html", "report artifact json", "report artifact maec", "report artifact memory-strings",
     "report artifact misp", "report artifact misp-json", "report artifact openioc", "report artifact pcap", "report artifact pdf", "report artifact stix", "report artifact xml",
     "report children", "report memory hex", "report memory list", "report memory strings", "report screenshots", "report show", "report state",
+    "report-download-bin", "report-download-dropped-files", "report-download-memory",
     "system action-scripts", "system configuration", "system environments", "system queue-size", "system stats", "system total-submissions", "system version", "termsSearch",
   ]);
   const inventory = JSON.parse(readFileSync(join(packageRoot, "inventory/capabilities.json"), "utf8"));

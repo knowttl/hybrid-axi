@@ -3,16 +3,17 @@ import type { OperationBinding } from "./transport-core.js";
 import { searchBindings, searchCatalogue } from "./search-catalogue.js";
 import type { MutationOperation } from "./writes-core.js";
 import { reportBindings, reportCatalogue } from "./report-catalogue.js";
+import { downloadBindings, downloadOperations } from "./download-catalogue.js";
 
 export const DESCRIPTION = "Agent-friendly CLI for Hybrid Analysis, under construction";
 
-// Future named write slices register reviewed definitions here. T6 exposes no commands.
-export const mutationOperations: Readonly<Record<string, MutationOperation>> = Object.freeze({});
+export const mutationOperations: Readonly<Record<string, MutationOperation>> = Object.freeze({ ...downloadOperations });
 
 // Planned inventory entries never authorize execution. Feature slices bind reviewed operations here.
 export const transportBindings: Readonly<Record<string, OperationBinding>> = Object.freeze({
   ...searchBindings,
   ...reportBindings,
+  ...downloadBindings,
   "key.current": Object.freeze({ method: "GET", path: "/api/v2/key/current", effect: "read", decoder: keyDecoder,
     requiredKeyLevel: "restricted" }),
   "key.submission-quota": Object.freeze({ method: "GET", path: "/api/v2/key/submission-quota", effect: "read", decoder: quotaDecoder,

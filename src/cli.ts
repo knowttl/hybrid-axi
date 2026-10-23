@@ -8,11 +8,14 @@ import { createSession } from "./session.js";
 import { TransportError } from "./transport-core.js";
 import { parseSearch, searchCommand } from "./search.js";
 import { parseReport, reportCommand } from "./reports.js";
+import { createWriteCoordinator } from "./writes.js";
+import { saveArtifact } from "./report-file.js";
 
 export async function main(argv = process.argv.slice(2), options: {
   credentials?: CredentialContext;
   stdout?: { write: (chunk: string) => unknown };
   createTransport?: typeof createTransport;
+  createWriteCoordinator?: typeof createWriteCoordinator;
 } = {}): Promise<void> {
   const store = credentialStore(options.credentials);
   let selectors: { config?: string; profile?: string } = {};
@@ -38,6 +41,20 @@ export async function main(argv = process.argv.slice(2), options: {
         if (report) {
           selectors = { config: report.flags["--config"], profile: report.flags["--profile"] };
           if (report.help) return report.help;
+          if (report.guarded) {
+            const writes = (options.createWriteCoordinator ?? createWriteCoordinator)(selectors, options.credentials);
+            const result = await writes.run(report.operation!, { id: report.positional[0], output: report.output }, {
+              execute: report.flags["--execute"] === "true", dryRun: report.flags["--dry-run"] === "true", confirm: report.flags["--confirm"],
+            });
+            if (result.kind !== "success") return result;
+            try {
+              return { id: report.positional[0], type: report.flags["--type"] ?? "bin", auditId: result.auditId,
+                ...saveArtifact(report.output!, result.response as Uint8Array, report.operation!) };
+            } catch (error) {
+              if (error instanceof TransportError) throw new TransportError({ ...error.error, auditId: result.auditId }, result.help);
+              throw error;
+            }
+          }
           store.readOnly();
           const loaded = store.load(selectors.config);
           const profile = store.select(loaded.config, selectors.profile, selectors.config);

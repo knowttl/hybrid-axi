@@ -28,6 +28,8 @@ export class SecretRedactor {
   }
 
   payload(value: unknown): unknown {
+    // Artifact bytes are opaque and are saved unchanged, never printed as metadata.
+    if (value instanceof Uint8Array) return value;
     if (typeof value === "string") return this.text(value)
       .replace(/-----BEGIN (?:[A-Z]+ )*PRIVATE KEY-----[\s\S]*?-----END (?:[A-Z]+ )*PRIVATE KEY-----/g, REDACTED)
       .replace(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g, REDACTED)
