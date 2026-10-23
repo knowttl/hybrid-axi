@@ -232,7 +232,7 @@ Store exactly the provided compressed/archive bytes, without unpacking, recompre
 Require an explicit new output path, refuse overwrite and unsafe paths, stream to a private bounded temporary file and publish atomically only after success.
 Treat `Vx-Filename` as untrusted metadata, never a destination path.
 Binary content never goes to stdout or logs.
-The archive/password discrepancy remains an owner note below, without blocking guarded execution.
+The archive/password discrepancy is documented in the decisions below, without blocking guarded execution.
 
 ## Complete operation ledger
 
@@ -325,7 +325,7 @@ No live behavior was probed in this design slice.
    No non-consuming matches-list alternative appears in the snapshot; this command is a guarded write by explicit decision.
 4. Overview refresh is a GET that fetches fresh external-service data; it is blocked rather than exposed as a raw read.
 5. Sample downloads declare `application/gzip`; generic binary downloads describe gzip and memory describes ZIP.
-   The specs do not promise password protection, contrary to the parenthetical expectation in the approved download answer; retain this as the owner note below and allow guarded downloads unchanged.
+   The specs do not promise password protection, contrary to the parenthetical expectation in the original download answer; the confirmed decision below allows guarded downloads unchanged with a warning.
 6. `/report/{id}/file/{type}` is deprecated and mixes ordinary report formats with `bin` and `memory`; memory has no dedicated binary replacement in the spec.
    Dropped-file legacy routes are deprecated, a current raw route exists, and `/dropped-files-v2` provides an archive; the raw route stays blocked under the archive-first requirement.
 7. `feed latest` is deprecated; `/feed/detonation` and `/feed/quick-scan` provide current feed alternatives with different caps (250 versus 2,500).
@@ -343,13 +343,14 @@ No live behavior was probed in this design slice.
     A reset must be explicit in payload and preview; deletion returns 204 without a JSON body.
 15. The later request adds actual artium-axi integration after publication, replacing the original note-only exclusion; T13 is a separate host-repository PR.
 
-## Decisions and open owner note
+## Confirmed safety decisions
 
 Q1 is resolved: consuming hunting matches is a guarded write, with no preview request or automatic replay.
 Q2 is resolved for implementation: guarded sample and memory downloads remain allowed and save the upstream bytes unchanged, without encryption or repackaging.
-Open owner note: the expected password-protected archive is not guaranteed by the pinned specs, which document gzip/ZIP delivery.
+The expected password-protected archive is not guaranteed by the pinned specs, which document gzip/ZIP delivery.
 Protection remains unverified; preview and help must disclose that limitation alongside the live-malware warning.
-This note does not block guarded execution or authorize changing artifact bytes.
+The owner confirmed on 2026-10-22: keep them allowed with a warning.
+This decision does not authorize changing artifact bytes.
 
 No open contract is resolved by a guess about live behavior.
 Missing-analysis, key denial and header details are verification requirements for synthetic contract tests and separately authorized read-only acceptance.
