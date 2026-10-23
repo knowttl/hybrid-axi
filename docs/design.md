@@ -117,8 +117,11 @@ Env profiles cannot enable writes.
 Linux/macOS config uses absolute `$XDG_CONFIG_HOME/hybrid-axi/config.json`, otherwise `~/.config/hybrid-axi/config.json`.
 State uses absolute `$XDG_STATE_HOME/hybrid-axi`, otherwise `~/.local/state/hybrid-axi`.
 Windows uses `%APPDATA%\hybrid-axi\config.json` and `%LOCALAPPDATA%\hybrid-axi`, ignoring XDG.
-Use `os.homedir()` and the same private-file protections as vectra-axi: regular files, no symlinks/reparse points, current-user ownership, private secret files and protected Windows DACLs.
-Use 0700 private directories and 0600 secret/journal files on POSIX; reject group/other writable config.
+Use `os.homedir()` and require regular files, no symlinks/reparse points and current-user ownership on every configuration or secret-file read, including `home`, `profile list` and `auth status`.
+On Windows, require a protected DACL with no inherited entries or grants to principals other than the current user, SYSTEM and Administrators.
+An owner-only DACL is accepted, including read-only owner grants; SYSTEM and Administrators entries are optional and FullControl is not required.
+Use 0700 private directories and 0600 secret/journal files for POSIX writes.
+POSIX reads reject group/other writable config and any group/other permission bits on secret files; read-only owner mode 0400 is accepted.
 Decode secret files as UTF-8, remove BOM and trailing whitespace, and reject empty credentials.
 `auth status` and `doctor` verify file protections without printing values.
 

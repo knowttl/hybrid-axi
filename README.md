@@ -22,9 +22,7 @@ Profile selection is `--profile`, `HYBRID_AXI_PROFILE`, a complete environment p
 Explicit file-profile selection ignores environment profile fields; partial environment profiles fail.
 Linux/macOS use absolute XDG config/state directories or `~/.config/hybrid-axi/config.json` and `~/.local/state/hybrid-axi`.
 Windows uses APPDATA for config and LOCALAPPDATA for state, ignoring XDG.
-Config and secret files must be regular files owned by the current user, without symlinks or Windows reparse points.
-POSIX config must not be group/other writable; secret files require mode 0600 or 0400.
-Windows auth status verifies protected DACLs granting only the current user, SYSTEM and Administrators.
+Prepare config and secret files with current-user ownership and the [private-file protections](docs/design.md#profiles-and-authentication), checked on every read.
 
 The shipped `axi-credential.schema.json` describes one strict profile with an `x-secret` apiKey env/file SecretRef.
 Unlike the shared credential standard's optional login storage, this tool excludes stored refs and provides no login or key issuance.
