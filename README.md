@@ -2,7 +2,7 @@
 
 Agent-ergonomic CLI for the Hybrid Analysis API, read-only by default, with compact TOON output and explicitly guarded submissions, YARA changes and malware downloads.
 
-This repository ships local credential commands, bounded `doctor` and `quota` reads, hash overviews and searches, experimental Labs queries, report reads and normal artifacts, guarded malware downloads, feeds, system discovery, reviewed raw reads, guarded sandbox submissions and quick scans.
+This repository ships local credential commands, bounded `doctor` and `quota` reads, hash overviews and searches, experimental Labs queries and hunting, report reads and normal artifacts, guarded malware downloads, feeds, system discovery, reviewed raw reads, guarded sandbox submissions and quick scans.
 No npm release is available yet.
 The [design](docs/design.md) defines the planned command surface, complete stable/Labs operation ledger, credentials, safety boundaries, specification deviations and ordered implementation slices.
 The tool-specific no-mistakes configuration establishes offline validation before feature work.
@@ -132,13 +132,15 @@ No live submission or quick scan is part of automated verification.
 `hunting yara list` reads own rules, with optional `--search`, comma-separated `--threat-category` and `--status active|paused` filters.
 `hunting yara show <id>` reads one own rule.
 All hunting commands are experimental Labs contracts; unknown response fields remain available with `--fields` or `--full` after redaction.
+These output flags are mutually exclusive.
 Compact rule fields are `id`, `identifier` and `active`; selected text previews stop at 1,000 characters unless `--full` is supplied.
-`hunting yara create --body-file <path>` requires a JSON object with `identifier`, `threat_categories` and YARA source in `rule`.
+`hunting yara create --body-file <path>` requires a strict JSON object with `identifier`, `threat_categories` and YARA source in `rule`; unknown request fields are rejected.
 Optional fields are `active` and integer `daily_notifications_limit`.
 `hunting yara update <id> --body-file <path>` sends a partial POST containing only supplied fields, and accepts explicit `reset_counter:true` to reset the all-time matches counter.
 `--body-file -` reads JSON from stdin, bounded to 1 MiB like regular body files.
 `hunting yara delete <id>` deletes the exact rule and accepts an empty 204 success.
 Every change previews first and requires enabled write scope, `--execute` and the exact preview confirmation, binding the profile, target and complete request digest.
+Update and delete previews read the current rule; execution reads it again and checks for changes before sending the mutation.
 
 `hunting matches` is a guarded consuming GET, with `--items-count` default 100 (range 1-1000) and optional RFC3339 `--search-after`.
 Its preview names the current user's undelivered-match scope without sending a request.

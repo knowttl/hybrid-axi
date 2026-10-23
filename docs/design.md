@@ -158,16 +158,16 @@ Additional command contracts are:
 | `report show/state <id>` | Job ID or `sha256:environmentId`; summary and state respectively. | See [report field selections](../src/report-catalogue.ts). |
 | `report file <id>` | Exactly one `--type` and explicit new `--output`; one artifact per call, type determines gate below. | id, type, output, bytes |
 | `quick-scan file/url` | `--file` or `--url`, documented `--scan-type`; read-class but transmits the supplied sample/URL. | id, finished, sha256 |
-| `hunting yara list/show` | Experimental; list `--search`, `--threat-category`, `--status`; show positional ID. | id, identifier, active |
-| `hunting yara create/update/delete` | Experimental, operation-specific `--body-file` for create/update; exact confirmation. | id, identifier, active |
-| `hunting matches` | Experimental guarded write; `--items-count` (default 100, range 1-1000), optional `--search-after` timestamp; preview consuming scope without calling the endpoint. | id, rule, sha256, match time |
+| `hunting yara list/show` | See [shipped hunting behavior](../README.md#experimental-hunting). | See [hunting field selections](../README.md#experimental-hunting). |
+| `hunting yara create/update/delete` | See [shipped hunting behavior](../README.md#experimental-hunting). | See [hunting field selections](../README.md#experimental-hunting). |
+| `hunting matches` | See [shipped hunting behavior](../README.md#experimental-hunting). | See [hunting field selections](../README.md#experimental-hunting). |
 | `feed latest` | See [shipped feed behavior](../README.md#reports-feeds-and-reviewed-raw-reads). | See [feed field selections](../src/report-catalogue.ts). |
 | `api get <path>` | Relative API path plus `--labs` when appropriate; reviewed read-only GET bindings, validated query schema and normal output/transport policy. | Operation-specific fields |
 
 `api get` refuses binary routes, mixed-effect `/file/{type}`, refresh, consuming matches, unbound paths, full URLs and all writes; the HTTP method alone is insufficient authorization.
 Raw reads cannot change credentials, origin, headers or budgets.
 `hash search --hashes-file` uses the deprecated `/search/hashes` operation because the requested bulk behavior has no equivalent stable bulk replacement in this snapshot; document that warning.
-`--body-file -` may use stdin for YARA source/JSON; reject competing stdin consumers and enforce size bounds.
+See [README's hunting contract](../README.md#experimental-hunting) for JSON body files, stdin and size bounds.
 Submission selectors and options are operation-specific; the [submission definitions](../src/submission-catalogue.ts) own their schemas, including which operations accept an environment ID.
 Never silently enable deprecated anti-evasion/network flags.
 
