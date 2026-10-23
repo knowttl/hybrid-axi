@@ -1,6 +1,7 @@
 import { existsSync, lstatSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { gzipSync } from "node:zlib";
 import { decode } from "@toon-format/toon";
 import { expect, test } from "vitest";
 import { main } from "../src/cli.js";
@@ -160,6 +161,25 @@ test.each(["crt", "pcap", "json", "memory-strings", "xml", "html", "pdf", "maec"
   expect(result.requests[0]).toMatchObject({ method: "GET", url: `/api/v2/report/job/${paths[type] ?? `file/${type}`}` });
 });
 
+test("gzip artifact bytes delivered without content encoding remain compressed", async () => {
+  const bytes = gzipSync("synthetic capture");
+  const result = await cli(["report", "file", "job", "--type", "pcap", "--output", "<dir>/capture.gz"], [{ bytes }], {
+    inspect: (directory) => expect(readFileSync(join(directory, "capture.gz"))).toEqual(bytes),
+  });
+  expect(result.code).toBe(0);
+  expect(result.requests[0]).toMatchObject({ headers: { "accept-encoding": "identity" } });
+});
+
+test.each(["crt", "pcap", "json", "memory-strings", "xml", "html", "pdf", "maec", "stix", "misp", "misp-json", "openioc"])("encoded %s delivery cannot publish transformed bytes", async (type) => {
+  const result = await cli(["report", "file", "job", "--type", type, "--output", "<dir>/artifact"], [{ text: "synthetic capture", headers: { "content-encoding": "gzip" } }], {
+    inspect: (directory) => expect(readdirSync(directory)).toEqual([]),
+  });
+  expect(result.code).toBe(1);
+  expect(result.output).toMatchObject({ error: { code: "MALFORMED_RESPONSE" } });
+  expect(result.requests).toHaveLength(1);
+  expect(result.requests[0]).toMatchObject({ headers: { "accept-encoding": "identity" } });
+});
+
 test("an artifact destination created during the request is never overwritten", async () => {
   const result = await cli(["report", "file", "job", "--type", "json", "--output", "<dir>/artifact"], [{ text: "inert" }], {
     afterRequest: (directory) => writeFileSync(join(directory, "artifact"), "existing"),
@@ -236,6 +256,18 @@ test.each([
 ])("invalid or sensitive input fails before credential resolution: %j", async (...argv) => {
   const result = await cli(argv, [], { noCredentials: true });
   expect(result.code).toBe(2);
+  expect(result.requests).toHaveLength(0);
+});
+
+test.each([
+  ["report", "show", "job"], ["report", "state", "job"],
+  ["report", "file", "job"], ["report", "memory", "list", "job"],
+  ["feed", "latest"], ["system", "version"], ["api", "get", "/system/version"],
+])("inline rejected credentials never appear in diagnostics: %j", async (...argv) => {
+  const result = await cli([...argv, `--api-key=${syntheticKey}`], [], { noCredentials: true });
+  expect(result.code).toBe(2);
+  expect(result.output).toMatchObject({ error: expect.stringContaining("Unknown or duplicate flag: --api-key") });
+  expect(result.stdout).not.toContain(syntheticKey);
   expect(result.requests).toHaveLength(0);
 });
 

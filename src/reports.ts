@@ -23,11 +23,12 @@ export function parseReport(argv: string[]) {
   for (let index = command.split(" ").length; index < argv.length; index++) {
     const word = argv[index]!;
     if (!word.startsWith("-")) { positional.push(word); continue; }
-    if (!Object.hasOwn(entry.flags, word) || Object.hasOwn(flags, word)) usage(`Unknown or duplicate flag: ${word}`);
+    const flagName = word.split("=", 1)[0]!;
+    if (!Object.hasOwn(entry.flags, word) || Object.hasOwn(flags, word)) usage(`Unknown or duplicate flag: ${flagName}`);
     if (["--help", "--full", "--labs"].includes(word)) flags[word] = "true";
     else {
       const value = argv[++index];
-      if (!value?.trim() || value.startsWith("-")) usage(`Flag requires a value: ${word}`);
+      if (!value?.trim() || value.startsWith("-")) usage(`Flag requires a value: ${flagName}`);
       flags[word] = value!;
     }
   }

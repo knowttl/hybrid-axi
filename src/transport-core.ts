@@ -163,6 +163,7 @@ export function constructTransport(options: { credential: Credential; origin?: s
         try {
           const response = await dependencies.fetch(url, {
             method: reviewed.method, headers: { "api-key": apiKey, "user-agent": "hybrid-axi", accept: reviewed.download ? "*/*" : "application/json",
+              ...(reviewed.download ? { "accept-encoding": "identity" } : {}),
               ...(body !== undefined ? { "content-type": reviewed.bodyEncoding === "form" ? "application/x-www-form-urlencoded" : "application/json" } : {}) },
             ...(body !== undefined ? { body } : {}), redirect: "error", signal: controller.signal,
           });
@@ -183,6 +184,11 @@ export function constructTransport(options: { credential: Credential; origin?: s
           if (response.status >= 300 && response.status < 400) {
             await response.body?.cancel();
             fail("REDIRECT_BLOCKED", "Upstream redirect refused", operation, { status: response.status });
+          }
+          const encoding = response.headers.get("content-encoding");
+          if (reviewed.download && response.ok && encoding !== null && encoding.trim().toLowerCase() !== "identity") {
+            await response.body?.cancel();
+            fail("MALFORMED_RESPONSE", "Encoded artifact delivery cannot preserve upstream bytes", operation, { status: response.status });
           }
           if (reviewed.download && response.ok && Number(response.headers.get("content-length")) > 250 * 1024 * 1024 - downloadBytes) {
             await response.body?.cancel();
