@@ -1,16 +1,19 @@
 import { keyDecoder, quotaDecoder } from "./key-contracts.js";
 import type { OperationBinding } from "./transport-core.js";
+import { searchBindings, searchCatalogue } from "./search-catalogue.js";
 
 export const DESCRIPTION = "Agent-friendly CLI for Hybrid Analysis, under construction";
 
 // Planned inventory entries never authorize execution. Feature slices bind reviewed operations here.
 export const transportBindings: Readonly<Record<string, OperationBinding>> = Object.freeze({
+  ...searchBindings,
   "key.current": Object.freeze({ method: "GET", path: "/api/v2/key/current", effect: "read", decoder: keyDecoder,
     requiredKeyLevel: "restricted" }),
   "key.submission-quota": Object.freeze({ method: "GET", path: "/api/v2/key/submission-quota", effect: "read", decoder: quotaDecoder,
     requiredKeyLevel: "restricted" }),
 });
 export const catalogue = {
+  ...searchCatalogue,
   home: {
     description: "Show local profile and policy without contacting Hybrid Analysis",
     flags: { "--help": "Show help; default false", "--config": "Config path; default HYBRID_AXI_CONFIG or platform config", "--profile": "Profile name; default HYBRID_AXI_PROFILE or profile precedence" },

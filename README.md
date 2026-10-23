@@ -2,8 +2,8 @@
 
 Agent-ergonomic CLI for the Hybrid Analysis API, read-only by default, with compact TOON output and explicitly guarded submissions, YARA changes and malware downloads.
 
-This repository ships local credential commands plus the bounded `doctor` and `quota` API reads.
-No npm release or other API commands are available yet.
+This repository ships local credential commands, bounded `doctor` and `quota` reads, hash overviews and searches, named term filters, and experimental Labs queries.
+No npm release is available yet.
 The [design](docs/design.md) defines the planned command surface, complete stable/Labs operation ledger, credentials, safety boundaries, specification deviations and ordered implementation slices.
 The tool-specific no-mistakes configuration establishes offline validation before feature work.
 
@@ -54,6 +54,32 @@ The closed transport uses only reviewed HTTPS bindings, refuses redirects and sh
 Binary responses have a separate 250-MiB ceiling.
 An explicitly retryable, non-consuming read can retry an explicit 429 or 502/503/504 response at most twice within those budgets.
 Ambiguous timeouts and network failures are never replayed.
+
+## Hash and search
+
+`hybrid-axi hash show <sha256>` displays the stable overview; `--labs` selects the experimental Labs overview.
+A successfully decoded overview with an explicitly empty report list and no verdict or score reports that no analysis is available and names the hash lookup command to run next.
+The empty-state contract is verified against the fake service; live missing-hash verification is pending separately authorized acceptance.
+404, permission denial and malformed data are not interpreted as absence.
+Labs 425 reports analysis pending and provides the exact overview command to retry.
+`hybrid-axi hash search --hash <hash>` uses the current GET lookup for MD5, SHA1, SHA256 or SHA512 and returns associated report identifiers.
+`--hashes-file <path>` instead uses the deprecated bulk POST with a newline-separated MD5/SHA1/SHA256 file, bounded to 1 MiB.
+
+`hybrid-axi search terms` requires at least one documented named filter; run its help for the complete filter list.
+Filter flags use kebab-case, such as `--env-id`, `--vx-family` and `--date-from`.
+Term date filters use `YYYY-MM-DD HH:mm`.
+Search requests transmit filters and hashes, without uploading samples or URLs for analysis.
+
+`hybrid-axi search run --query '<query>'` starts one experimental Labs query with `--size` default 50 (range 1-200) and `--page` default 1.
+Optional `--date-from` and `--date-to` use `YYYY-MM-DD` and include both endpoints.
+Synchronous responses return the selected page immediately; asynchronous responses provide an ID and trigger one bounded result fetch using the same invocation budget.
+Pending results and retrieval failures name `hybrid-axi search results <id>` for resuming without starting another query.
+The CLI preserves the upstream `query_status`; the asynchronous API ignores page and treats size as the total number of matches to return.
+Neither query starts nor result retrieval are automatically replayed.
+
+Hash and search commands use compact output by default.
+`--full` exposes all decoded fields; `--fields <comma-separated-names>` selects fields at each response level, including new experimental fields, after sensitive-field redaction.
+Labs response envelopes remain array-shaped under `searches`, with result rows under `results`.
 
 ## Development
 

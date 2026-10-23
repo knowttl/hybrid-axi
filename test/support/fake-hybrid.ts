@@ -35,9 +35,11 @@ export function fakeTransport(replies: (Reply | "hang" | "disconnect")[], option
 export async function fakeHttpsHybrid(replies: Reply[]) {
   const cert = readFileSync(new URL("../fixtures/cert.pem", import.meta.url));
   const key = readFileSync(new URL("../fixtures/key.pem", import.meta.url));
-  const requests: { method: string; url: string; headers: Record<string, string | string[] | undefined> }[] = [];
-  const server = createServer({ key, cert }, (request, response) => {
-    requests.push({ method: request.method!, url: request.url!, headers: request.headers });
+  const requests: { method: string; url: string; headers: Record<string, string | string[] | undefined>; body: string }[] = [];
+  const server = createServer({ key, cert }, async (request, response) => {
+    const chunks: Buffer[] = [];
+    for await (const chunk of request) chunks.push(Buffer.from(chunk));
+    requests.push({ method: request.method!, url: request.url!, headers: request.headers, body: Buffer.concat(chunks).toString("utf8") });
     const reply = replies.shift() ?? { status: 500, body: { message: "Unexpected fake request" } };
     response.writeHead(reply.status ?? 200, { "content-type": "application/json", ...reply.headers });
     response.end(reply.bytes ?? reply.text ?? JSON.stringify(reply.body));
@@ -58,7 +60,7 @@ export async function fakeHttpsHybrid(replies: Reply[]) {
       resolve(new Response(Readable.toWeb(response) as ReadableStream<Uint8Array>, { status: response.statusCode!, headers }));
     });
     pending.once("error", reject);
-    pending.end();
+    pending.end(init.body);
   });
   return { requests, fetch, async close() {
     release();
