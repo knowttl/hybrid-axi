@@ -52,6 +52,44 @@ test.each(["doctor", "quota"])("%s resolves the selected private SecretRef and r
   } finally { await fake.close(); rmSync(directory, { recursive: true, force: true }); }
 });
 
+test.each([
+  ["doctor", "key.current", [], 1],
+  ["quota", "key.current", [], 1],
+  ["doctor", "key.submission-quota", [{ body: keyBody }], 2],
+  ["quota", "key.submission-quota", [{ body: keyBody }], 2],
+] as const)("%s preserves allowlisted headers when %s is rate limited", async (command, operation, preceding, requestCount) => {
+  const directory = mkdtempSync(join(tmpdir(), "hybrid-axi-rate-limited-"));
+  const config = join(directory, "config.json");
+  writeFileSync(config, JSON.stringify({ version: 1, profiles: { example: { apiKey: { env: "SYNTHETIC_KEY" } } } }), { mode: 0o600 });
+  const fake = await fakeHttpsHybrid([...preceding, { status: 429, body: { message: "Rate limited" }, headers: {
+    "Api-Limits": JSON.stringify({ remaining: 0, echoed: `${syntheticKey} ${encodeURIComponent(syntheticKey)}`, token: "synthetic-token" }),
+    "Submission-Limits": "broken", "X-RateLimit-Remaining": "0", "Retry-After": "60",
+    "Api-Version": "2.35", "Webservice-Version": `service-${syntheticKey}`,
+    "Set-Cookie": "synthetic-cookie", "X-Unrelated": "unrelated-value",
+  } }]);
+  let stdout = "";
+  const exitCode = process.exitCode;
+  try {
+    await main([command, "--config", config, "--profile", "example"], {
+      credentials: { env: { SYNTHETIC_KEY: syntheticKey }, home: directory }, stdout: { write: (chunk) => { stdout += chunk; } },
+      createTransport: (credential) => constructTransport({ credential }, { bindings: transportBindings, fetch: fake.fetch }),
+    });
+    expect(process.exitCode).toBe(1);
+    expect(decode(stdout)).toMatchObject({ error: { code: "RATE_LIMITED", status: 429, operation, retryAfter: 60 } });
+    expect((decode(stdout) as { error: { rateLimits: unknown } }).error.rateLimits).toEqual({
+      "Api-Limits": { value: { remaining: 0, echoed: "***redacted*** ***redacted***", token: "***redacted***" } },
+      "Submission-Limits": { malformed: true }, "X-RateLimit-Remaining": { value: "0" }, "Retry-After": { value: "60" },
+      "Api-Version": { value: "2.35" }, "Webservice-Version": { value: "service-***redacted***" },
+    });
+    expect(stdout).not.toContain(syntheticKey);
+    expect(stdout).not.toContain(encodeURIComponent(syntheticKey));
+    expect(stdout).not.toContain("synthetic-token");
+    expect(stdout).not.toContain("synthetic-cookie");
+    expect(stdout).not.toContain("unrelated-value");
+    expect(fake.requests).toHaveLength(requestCount);
+  } finally { process.exitCode = exitCode; await fake.close(); rmSync(directory, { recursive: true, force: true }); }
+});
+
 test("quota emits a structured transport error with selector-preserving recovery", async () => {
   const directory = mkdtempSync(join(tmpdir(), "hybrid-axi-denied-"));
   const config = join(directory, "config.json");

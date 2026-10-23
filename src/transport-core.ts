@@ -27,7 +27,7 @@ export type Transport = {
 export class TransportError extends Error {
   constructor(readonly error: {
     code: string; message: string; operation: string; status?: number; keyLevel?: string;
-    requiredKeyLevel?: string; retryAfter?: number;
+    requiredKeyLevel?: string; retryAfter?: number; rateLimits?: Record<string, unknown>;
   }, readonly help: readonly string[] = []) {
     super(error.message);
     this.name = "TransportError";
@@ -143,12 +143,27 @@ export function constructTransport(options: { credential: Credential; origin?: s
         const cancel = () => controller.abort();
         input.signal?.addEventListener("abort", cancel, { once: true });
         const timer = setTimeout(cancel, remaining);
+        let rateLimits: Record<string, unknown> | undefined;
         try {
           const response = await dependencies.fetch(url.href, {
             method: reviewed.method, headers: { "api-key": apiKey, "user-agent": "hybrid-axi", accept: reviewed.download ? "*/*" : "application/json",
               ...(body !== undefined ? { "content-type": "application/json" } : {}) },
             ...(body !== undefined ? { body } : {}), redirect: "error", signal: controller.signal,
           });
+          rateLimits = {};
+          for (const name of ["Api-Limits", "Submission-Limits", "Quick-Scan-Limits", "Sample-Download-Limits"]) {
+            const value = [...response.headers].find(([field]) => field.toLowerCase() === name.toLowerCase()
+              || name === "Submission-Limits" && field.toLowerCase() === 'submission-limits"')?.[1] ?? null;
+            if (value !== null) {
+              try { rateLimits[name] = { value: redact(JSON.parse(value)) }; }
+              catch { rateLimits[name] = { malformed: true }; }
+            }
+          }
+          for (const name of ["Api-Version", "Webservice-Version", "Retry-After", "RateLimit", "RateLimit-Policy",
+            "RateLimit-Limit", "RateLimit-Remaining", "RateLimit-Reset", "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"]) {
+            const value = response.headers.get(name);
+            if (value !== null) rateLimits[name] = { value: String(redact(value)).slice(0, 1000) };
+          }
           if (response.status >= 300 && response.status < 400) {
             await response.body?.cancel();
             fail("REDIRECT_BLOCKED", "Upstream redirect refused", operation, { status: response.status });
@@ -211,26 +226,16 @@ export function constructTransport(options: { credential: Credential; origin?: s
             const level = (decoded.data as { auth_level_name?: unknown }).auth_level_name;
             keyLevel = typeof level === "string" && ["restricted", "default", "elevated", "super"].includes(level) ? level : undefined;
           }
-          const rateLimits: Record<string, unknown> = {};
-          for (const name of ["Api-Limits", "Submission-Limits", "Quick-Scan-Limits", "Sample-Download-Limits"]) {
-            const value = [...response.headers].find(([field]) => field.toLowerCase() === name.toLowerCase()
-              || name === "Submission-Limits" && field.toLowerCase() === 'submission-limits"')?.[1] ?? null;
-            if (value !== null) {
-              try { rateLimits[name] = { value: redact(JSON.parse(value)) }; }
-              catch { rateLimits[name] = { malformed: true }; }
-            }
-          }
-          for (const name of ["Api-Version", "Webservice-Version", "Retry-After", "RateLimit", "RateLimit-Policy",
-            "RateLimit-Limit", "RateLimit-Remaining", "RateLimit-Reset", "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"]) {
-            const value = response.headers.get(name);
-            if (value !== null) rateLimits[name] = { value: String(redact(value)).slice(0, 1000) };
-          }
           return { status: response.status, body: reviewed.download ? decoded.data : redact(decoded.data), rateLimits };
         } catch (error) {
-          if (error instanceof TransportError) throw error;
+          if (error instanceof TransportError) {
+            if (rateLimits !== undefined) error.error.rateLimits = rateLimits;
+            throw error;
+          }
+          const details = rateLimits !== undefined ? { rateLimits } : {};
           if (controller.signal.aborted) fail(input.signal?.aborted ? "REQUEST_CANCELLED" : "TIMEOUT",
-            "Request outcome is ambiguous; it was not replayed", operation, {}, ["Inspect any known result ID before deciding whether to send again"]);
-          fail("NETWORK_ERROR", "Request failed with an unknown outcome; it was not replayed", operation);
+            "Request outcome is ambiguous; it was not replayed", operation, details, ["Inspect any known result ID before deciding whether to send again"]);
+          fail("NETWORK_ERROR", "Request failed with an unknown outcome; it was not replayed", operation, details);
         } finally {
           clearTimeout(timer);
           input.signal?.removeEventListener("abort", cancel);
