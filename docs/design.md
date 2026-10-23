@@ -237,6 +237,7 @@ Read classification for quick scan is a deliberate exception and does not mean i
 
 Use a private durable `writes.log` in the state directory, with a nonblank absolute `HYBRID_AXI_WRITE_LOG` override for controlled hosts.
 Record timestamp, audit ID, hashed intent ID, profile, operation name, target/request digest, write effect and outcome with any known HTTP status, excluding keys, headers, source bodies and artifact contents.
+When an operation reports an identity change, its successful outcome also records `idChange` with `previousId` and `newId`; intent records and unsuccessful outcomes cannot contain it.
 Flush intent before any send; serialization, duplicate-intent checks, malformed-journal and unresolved-lock refusal follow vectra-axi's contract.
 An explicit coordinator `intentId` is hashed for duplicate detection across invocations; omitting it uses a fresh audit UUID, not payload-based deduplication or upstream idempotency.
 An already reserved intent returns `ALREADY_EXECUTED` and its original audit ID, even if its outcome is known.
@@ -344,11 +345,9 @@ Later authorized live acceptance found the following differences from the pinned
 
 - Labs YARA counter reset returned a new rule ID, and the old ID subsequently returned 404.
   The pinned Labs update spec documents only resetting the all-time matches counter, without describing this identity change.
-  Every successful update that changes identity reports `idChange` with `previousId` and `newId` independently of response field selection and records both IDs in the private outcome journal.
-  Callers must use the returned ID for subsequent reads, updates and deletion.
+  See [shipped hunting behavior](../README.md#experimental-hunting) for identity-change output and subsequent operations.
 - Labs recent matches consumption is account-wide across all rules and irreversible for every returned match.
   The pinned spec documents only `items_count` and `search_after`, with no rule selector or rule filter.
-  Help and preview disclose that scope and delivery effect; count and timestamp still bound the returned batch.
   Rule-scoped consumption was withheld during live acceptance, and no undocumented parameter is sent.
 - Labs YARA create/update enforce the [local identifier limit](../README.md#experimental-hunting), which is absent from the pinned Labs spec.
   Live acceptance returned HTTP 400 with `validation_errors` naming the identifier length for a longer identifier.

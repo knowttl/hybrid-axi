@@ -246,7 +246,8 @@ Compact rule fields are `id`, `identifier` and `active`; selected text previews 
 Optional fields are `active` and integer `daily_notifications_limit`.
 `hunting yara update <id> --body-file <path>` sends a partial POST containing only supplied fields, and accepts explicit `reset_counter:true` to reset the all-time matches counter.
 Resetting changes the rule ID; use the returned ID for subsequent operations.
-Any update returning a changed ID exposes `idChange` with `previousId` and `newId`, even with `--fields`, and records both IDs in the private journal outcome.
+Any update returning a changed ID exposes `idChange` with `previousId` and `newId`, even with `--fields`.
+Identity changes are also retained under the [private journal contract](docs/design.md#guarded-writes-and-artifact-handling).
 For create and update, a supplied `identifier` is trimmed and must contain 1-25 characters; longer identifiers fail locally with `VALIDATION_ERROR` before preview or any HTTP request.
 `--body-file -` reads JSON from stdin, bounded to 1 MiB like regular body files.
 `hunting yara delete <id>` deletes the exact rule and accepts an empty 204 success.
