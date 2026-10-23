@@ -29,12 +29,12 @@ Gzip/ZIP delivery does not guarantee password protection.
 | `hybrid-axi hash search` | read | Find associated reports by hash, or deprecated bulk lookup from a newline-separated file |
 | `hybrid-axi hash show` | read | Show stable SHA256 overview; --labs selects the experimental Labs overview |
 | `hybrid-axi home` | read | Show local profile and policy without contacting Hybrid Analysis |
-| `hybrid-axi hunting matches` | write | Experimental Labs: consuming GET marks returned matches delivered; preview sends no request; never automatically replayed |
+| `hybrid-axi hunting matches` | write | Experimental Labs: account-wide, irreversible consumption across all rules; every returned undelivered match for the account is marked delivered, subject to count and timestamp. No rule selector; preview sends no request; never automatically replayed |
 | `hybrid-axi hunting yara create` | write | Experimental Labs: create own YARA rule; preview first, then --execute and exact --confirm. |
 | `hybrid-axi hunting yara delete` | write | Experimental Labs: delete own YARA rule; preview first, then --execute and exact --confirm. |
 | `hybrid-axi hunting yara list` | read | Experimental Labs: list own YARA rules; unknown response fields remain available |
 | `hybrid-axi hunting yara show` | read | Experimental Labs: show own YARA rule by required positional ID |
-| `hybrid-axi hunting yara update` | write | Experimental Labs: update own YARA rule; preview first, then --execute and exact --confirm. Partial POST; explicit reset_counter:true resets the all-time matches counter. |
+| `hybrid-axi hunting yara update` | write | Experimental Labs: update own YARA rule; preview first, then --execute and exact --confirm. Partial POST; explicit reset_counter:true resets the all-time matches counter and changes the rule ID. Use the returned ID; idChange reports previousId and newId when an update changes identity. |
 | `hybrid-axi profile list` | read | List configured profiles without resolving keys or contacting Hybrid Analysis |
 | `hybrid-axi quick-scan file` | read | Read exception: sends the sample to Hybrid Analysis without a write gate; never automatically replays |
 | `hybrid-axi quick-scan scanners` | read | Read available quick-scan services and supported scan types |
@@ -303,7 +303,7 @@ hybrid-axi home --help
 
 Effect: **write**.
 
-Experimental Labs: consuming GET marks returned matches delivered; preview sends no request; never automatically replayed
+Experimental Labs: account-wide, irreversible consumption across all rules; every returned undelivered match for the account is marked delivered, subject to count and timestamp. No rule selector; preview sends no request; never automatically replayed
 
 | Flag | Meaning |
 |---|---|
@@ -416,7 +416,7 @@ hybrid-axi hunting yara show <id> --full
 
 Effect: **write**.
 
-Experimental Labs: update own YARA rule; preview first, then --execute and exact --confirm. Partial POST; explicit reset_counter:true resets the all-time matches counter.
+Experimental Labs: update own YARA rule; preview first, then --execute and exact --confirm. Partial POST; explicit reset_counter:true resets the all-time matches counter and changes the rule ID. Use the returned ID; idChange reports previousId and newId when an update changes identity.
 
 | Flag | Meaning |
 |---|---|

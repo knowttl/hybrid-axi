@@ -342,6 +342,14 @@ The release [README deviation list](../README.md#deviations-from-the-prompt) own
 Those original findings came from specification review.
 Later authorized live acceptance found the following differences from the pinned snapshots; automated verification remains offline with synthetic fixtures.
 
+- Labs YARA counter reset returned a new rule ID, and the old ID subsequently returned 404.
+  The pinned Labs update spec documents only resetting the all-time matches counter, without describing this identity change.
+  Every successful update that changes identity reports `idChange` with `previousId` and `newId` independently of response field selection and records both IDs in the private outcome journal.
+  Callers must use the returned ID for subsequent reads, updates and deletion.
+- Labs recent matches consumption is account-wide across all rules and irreversible for every returned match.
+  The pinned spec documents only `items_count` and `search_after`, with no rule selector or rule filter.
+  Help and preview disclose that scope and delivery effect; count and timestamp still bound the returned batch.
+  Rule-scoped consumption was withheld during live acceptance, and no undocumented parameter is sent.
 - Labs YARA create/update enforce the [local identifier limit](../README.md#experimental-hunting), which is absent from the pinned Labs spec.
   Live acceptance returned HTTP 400 with `validation_errors` naming the identifier length for a longer identifier.
   No other field limits are inferred.

@@ -15,6 +15,7 @@ export type MutationOperation = Readonly<{
     request: Pick<RequestOptions, "pathParams" | "query" | "body">;
   };
   current?: (transport: Transport, input: unknown) => Promise<{ state: unknown; noop?: boolean }>;
+  idChange?: (input: unknown, response: unknown) => { previousId: string; newId: string } | undefined;
   effect: string;
   warnings?: readonly string[];
   readBackHelp: readonly string[];
@@ -51,11 +52,13 @@ const auditRecord = z.strictObject({
   target: z.string().regex(/^[a-f0-9]{64}$/), effect: z.literal("write"),
   status: z.number().int().min(100).max(599).optional(),
   result: z.enum(["SUCCESS", "FAILED", "NOT_SENT", "OUTCOME_UNKNOWN"]).optional(),
+  idChange: z.strictObject({ previousId: z.string(), newId: z.string() }).optional(),
 }).superRefine((record, context) => {
   const validOutcome = record.result === "SUCCESS" ? record.status !== undefined && record.status >= 200 && record.status < 300
     : record.result === "FAILED" ? record.status !== undefined && record.status >= 300
       : (record.result === "NOT_SENT" || record.result === "OUTCOME_UNKNOWN") && record.status === undefined;
-  if (record.kind === "intent" ? record.status !== undefined || record.result !== undefined : !validOutcome) {
+  if ((record.kind === "intent" ? record.status !== undefined || record.result !== undefined : !validOutcome)
+    || record.idChange !== undefined && (record.kind !== "outcome" || record.result !== "SUCCESS")) {
     context.addIssue({ code: "custom", message: "Invalid journal record" });
   }
 });
@@ -190,7 +193,8 @@ export function constructWriteCoordinator(options: WriteCoordinatorOptions, depe
     const meta = { auditId, intentKey: digest(flags.intentId ?? auditId), profile: scope.profile, operation,
       target: targetDigest, effect: "write" as const };
     const help = definition!.readBackHelp;
-    const append = (kind: "intent" | "outcome", result?: z.infer<typeof auditRecord>["result"], status?: number) => record({ ...meta, kind,
+    const append = (kind: "intent" | "outcome", result?: z.infer<typeof auditRecord>["result"], status?: number, idChange?: z.infer<typeof auditRecord>["idChange"]) => record({ ...meta, kind,
+      ...(idChange ? { idChange } : {}),
       time: new Date().toISOString(), ...(result === undefined ? {} : { result }), ...(status === undefined ? {} : { status }) }, help);
     append("intent");
     try {
@@ -211,8 +215,10 @@ export function constructWriteCoordinator(options: WriteCoordinatorOptions, depe
       throw new TransportError(store.redactor.payload({ ...upstream!.error, auditId }) as TransportError["error"],
         store.redactor.payload([...upstream!.help, ...help]) as string[]);
     } finally { authorizations.delete(authorization); }
-    append("outcome", "SUCCESS", response.status);
-    return { kind: "success" as const, preview, auditId, status: response.status, response: store.redactor.payload(response.body), help };
+    const idChange = definition!.idChange?.(data, response.body);
+    append("outcome", "SUCCESS", response.status, idChange);
+    return { kind: "success" as const, preview, auditId, status: response.status,
+      ...(idChange ? { idChange: store.redactor.payload(idChange) } : {}), response: store.redactor.payload(response.body), help };
   }
   return { scope, run };
 }
