@@ -1,5 +1,4 @@
-import { homedir } from "node:os";
-import { resolve, sep } from "node:path";
+import { basename, resolve } from "node:path";
 import { AxiError } from "axi-sdk-js";
 import { catalogue, DESCRIPTION, help, suggestion } from "./catalogue.js";
 import { credentialStore, ORIGIN } from "./profiles.js";
@@ -47,8 +46,7 @@ export function localCommand(argv: string[], store: ReturnType<typeof credential
     if (!(error instanceof AxiError) || error.code !== "PROFILE_REQUIRED") throw error;
   }
   const binary = resolve(process.argv[1] ?? "bin/hybrid-axi.js");
-  const home = homedir();
-  return { bin: binary.startsWith(`${home}${sep}`) ? `~${binary.slice(home.length)}` : binary,
+  return { bin: basename(binary),
     description: DESCRIPTION, profile: profile?.name ?? "none", origin: profile?.origin ?? ORIGIN,
     readOnly: profile ? store.effectiveReadOnly(profile) : true, setup: profile ? "configured" : "required",
     status: "Local configuration; doctor and quota are available for explicit API checks",

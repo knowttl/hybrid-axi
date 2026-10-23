@@ -1,6 +1,6 @@
 import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { isAbsolute, join, sep } from "node:path";
 import { afterEach, beforeEach, expect, test } from "vitest";
 import { credentialStore, ORIGIN } from "../src/profiles.js";
 import { localCommand } from "../src/local-commands.js";
@@ -94,6 +94,33 @@ test("private UTF-8 secret file removes BOM and trailing whitespace", () => {
   const path = config({ example: { apiKey: { file: key } } });
   expect(store.credentials(store.select(store.load(path).config))).toEqual({ apiKey: "synthetic-file-key" });
   expect(store.status(path)).toMatchObject({ source: "file", available: true, readOnly: true });
+});
+
+test("auth status reports only the secret source kind for an env ref", () => {
+  const path = config({ example: configured });
+  const status = credentialStore({ env: { SYNTHETIC_FILE_KEY: "synthetic-configured" }, home: directory }).status(path);
+  expect(status).toEqual({ profile: "example", source: "env", available: true, origin: ORIGIN, readOnly: false });
+  expect(JSON.stringify(status)).not.toContain("SYNTHETIC_FILE_KEY");
+  expect(JSON.stringify(status)).not.toContain(path);
+});
+
+test("auth status reports only the secret source kind for a file ref", () => {
+  const key = join(directory, "key");
+  writeFileSync(key, "synthetic-file-key", { mode: 0o600 });
+  const path = config({ example: { apiKey: { file: key } } });
+  const status = credentialStore({ env: {}, home: directory }).status(path);
+  expect(status).toEqual({ profile: "example", source: "file", available: true, origin: ORIGIN, readOnly: true });
+  expect(JSON.stringify(status)).not.toContain(key);
+  expect(JSON.stringify(status)).not.toContain(path);
+});
+
+test("home reports only the binary name, not its path", () => {
+  const path = config({});
+  const result = localCommand(["home", "--config", path], credentialStore({ env: {}, home: directory }));
+  expect(typeof result.bin).toBe("string");
+  expect(isAbsolute(result.bin as string)).toBe(false);
+  expect(result.bin).not.toContain(sep);
+  expect(result.bin).not.toContain(directory);
 });
 
 test.each(["", "\uFEFF \r\n", "synthetic\r\nheader", "synthetic;header", "synthetic=header", "synthetic\u0000key"])("invalid file credentials are refused: %j", (value) => {

@@ -44,6 +44,7 @@ export function parseSearch(argv: string[]) {
   if (needsPosition && positional.length !== 1) usage("A positional identifier is required");
   if (flags["--full"] && flags["--fields"]) usage("Choose --full or --fields");
   if (flags["--fields"] && !/^[a-zA-Z_][\w]*(,[a-zA-Z_][\w]*)*$/.test(flags["--fields"])) usage("Fields must be comma-separated field names");
+  if (flags["--limit"] && (!/^\d+$/.test(flags["--limit"]) || !Number.isSafeInteger(Number(flags["--limit"])) || Number(flags["--limit"]) < 1)) usage("--limit must be a positive integer");
   if (command === "hash show" && (!hash.test(positional[0]!) || positional[0]!.length !== 64)) usage("Expected a SHA256");
   if (command === "search results" && !/^[A-Za-z0-9_-]{1,256}$/.test(positional[0]!)) usage("Invalid query ID");
   const body: Record<string, unknown> = {};
@@ -107,6 +108,11 @@ export async function searchCommand(parsed: NonNullable<ReturnType<typeof parseS
     : Object.fromEntries((flags["--fields"]?.split(",") ?? defaults).filter((key) => Object.hasOwn(value, key)).map((key) => [key, value[key]]));
   const selector = `${flags["--config"] ? ` --config '${flags["--config"].replaceAll("'", "'\"'\"'")}'` : ""}${flags["--profile"] ? ` --profile '${flags["--profile"].replaceAll("'", "'\"'\"'")}'` : ""}`;
   const resume = (id: string) => `Run hybrid-axi search results ${id}${selector}`;
+  const limit = Number(flags["--limit"] ?? "100");
+  const truncations: { path: string; returned: number; total: number }[] = [];
+  const limited = <T,>(rows: readonly T[], path: string): T[] => rows.length <= limit ? [...rows]
+    : (truncations.push({ path, returned: limit, total: rows.length }), rows.slice(0, limit));
+  const viewSuffix = `${flags["--full"] ? " --full" : flags["--fields"] ? ` --fields ${flags["--fields"]}` : ""}`;
   if (command === "hash show") {
     let response;
     try { response = await transport.request(flags["--labs"] ? "labsOverview" : "hashOverview", { pathParams: { sha256: positional[0]! } }); }
@@ -117,18 +123,28 @@ export async function searchCommand(parsed: NonNullable<ReturnType<typeof parseS
     const value = experimental ? decode(labsOverview, response.body) : decode(stableOverview, response.body);
     const reports = experimental ? (value.report_ids as { sandbox_job_ids: string[] }).sandbox_job_ids : value.reports as string[];
     const empty = reports.length === 0 && value.verdict == null && value.threat_score == null;
-    return { ...(experimental ? { experimental } : {}), overview: select(value, ["sha256", "verdict", "threat_score", "reports", "report_ids", "overall_status"]),
-      ...(empty ? { state: "empty", message: "No analysis is available for this hash", help: [`Run hybrid-axi hash search --hash ${positional[0]}${selector}`] } : {}) };
+    const selected = select(value, ["sha256", "verdict", "threat_score", "reports", "report_ids", "overall_status"]);
+    let overview = selected;
+    if (Array.isArray(selected.reports)) overview = { ...selected, reports: limited(selected.reports as unknown[], "overview.reports") };
+    else if (selected.report_ids && typeof selected.report_ids === "object" && Array.isArray((selected.report_ids as { sandbox_job_ids?: unknown }).sandbox_job_ids))
+      overview = { ...selected, report_ids: { ...(selected.report_ids as Record<string, unknown>), sandbox_job_ids: limited((selected.report_ids as { sandbox_job_ids: unknown[] }).sandbox_job_ids, "overview.report_ids.sandbox_job_ids") } };
+    return { ...(experimental ? { experimental } : {}), overview,
+      ...(truncations.length ? { truncation: truncations, help: [`Run hybrid-axi hash show ${positional[0]}${flags["--labs"] ? " --labs" : ""} --limit ${reports.length}${viewSuffix}${selector}`] }
+        : empty ? { state: "empty", message: "No analysis is available for this hash", help: [`Run hybrid-axi hash search --hash ${positional[0]}${selector}`] } : {}) };
   }
   if (command === "hash search") {
     if (flags["--hash"]) {
       const value = decode(hashResult, (await transport.request("hashSearch", { query: { hash: flags["--hash"] } })).body);
-      return { ...select(value, ["sha256s", "reports"]), count: value.reports.length,
-        ...(value.reports.length ? {} : { state: "empty", message: "No analysis reports found for this hash", help: [`Run hybrid-axi hash show ${value.sha256s[0] ?? "<sha256>"}${selector}`] }) };
+      const selected = select(value, ["sha256s", "reports"]);
+      const shown = Array.isArray(selected.reports) ? { ...selected, reports: limited(selected.reports as unknown[], "reports") } : selected;
+      return { ...shown, count: value.reports.length,
+        ...(truncations.length ? { truncation: truncations, help: [`Run hybrid-axi hash search --hash ${flags["--hash"]} --limit ${value.reports.length}${viewSuffix}${selector}`] }
+          : value.reports.length ? {} : { state: "empty", message: "No analysis reports found for this hash", help: [`Run hybrid-axi hash show ${value.sha256s[0] ?? "<sha256>"}${selector}`] }) };
     }
     const value = decode(z.array(sample), (await transport.request("hashesSearch", { body })).body);
-    return { deprecated: true, results: value.map((row) => select(row, ["sha256", "verdict", "threat_score", "job_id"])), count: value.length,
-      ...(value.length ? {} : { state: "empty", message: "No analysis reports found for the supplied hashes" }) };
+    return { deprecated: true, results: limited(value.map((row) => select(row, ["sha256", "verdict", "threat_score", "job_id"])), "results"), count: value.length,
+      ...(truncations.length ? { truncation: truncations, help: [`Run hybrid-axi hash search --hashes-file '${flags["--hashes-file"]!.replaceAll("'", "'\"'\"'")}' --limit ${value.length}${viewSuffix}${selector}`] }
+        : value.length ? {} : { state: "empty", message: "No analysis reports found for the supplied hashes" }) };
   }
   if (command === "search terms") {
     const value = decode(termsResult, (await transport.request("termsSearch", { body })).body);

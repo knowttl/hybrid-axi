@@ -256,6 +256,7 @@ Find associated reports by hash, or deprecated bulk lookup from a newline-separa
 | `--full` | Include all response fields; default false |
 | `--hash` | One MD5/SHA1/SHA256/SHA512; exactly one selector required |
 | `--hashes-file` | Newline-separated MD5/SHA1/SHA256 file; deprecated bulk route |
+| `--limit` | Local row limit; default 100; --full does not change it |
 
 ```sh
 hybrid-axi hash search --hash <hash>
@@ -276,6 +277,7 @@ Show stable SHA256 overview; --labs selects the experimental Labs overview
 | `--fields` | Comma-separated response fields; default compact fields |
 | `--full` | Include all response fields; default false |
 | `--labs` | Experimental Labs overview; default false |
+| `--limit` | Local row limit; default 100; --full does not change it |
 
 ```sh
 hybrid-axi hash show <sha256>

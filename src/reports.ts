@@ -84,7 +84,7 @@ export function parseReport(argv: string[]) {
       break;
     }
     if (!found) usage("API path is not a reviewed JSON read; binary, mixed, refresh, consuming and unbound routes are blocked");
-    if (flags["--limit"] && !reportReads[operation]?.rows) usage("--limit is only available for reviewed row collections");
+    if (flags["--limit"] && !reportReads[operation]?.rows && !["hashOverview", "labsOverview", "hashSearch"].includes(operation)) usage("--limit is only available for reviewed row collections");
   } else {
     if (command === "report memory strings" || command === "report memory hex") {
       if (!flags["--filename"] || flags["--filename"].length > 4096) usage("--filename is required and must be at most 4096 characters");
