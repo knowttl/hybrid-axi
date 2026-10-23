@@ -137,7 +137,8 @@ Never store keys or full response bodies in journals.
 
 Use noun/subnoun/verb grammar and kebab-case flags.
 Retain the requested positional `hash show <sha256>`, `report show <id>` and `api get <path>` shapes.
-Common selectors are `--config` and `--profile`; every leaf supports concise `--help` with defaults, required inputs and two or three examples.
+Profile commands share `--config` and `--profile`; `setup hooks` accepts only `--scope` and `--help`.
+Every leaf supports concise `--help` with defaults, required inputs and examples.
 Reject unknown flags, unexpected/duplicate arguments and invalid combinations before credential resolution or HTTP, with exit 2 and valid flags inline.
 No interactive prompts are needed.
 
@@ -348,7 +349,8 @@ No live behavior was probed in this design slice.
 6. `/report/{id}/file/{type}` is deprecated and mixes ordinary report formats with `bin` and `memory`; memory has no dedicated binary replacement in the spec.
    Dropped-file legacy routes are deprecated, a current raw route exists, and `/dropped-files-v2` provides an archive; the raw route stays blocked under the archive-first requirement.
 7. `feed latest` is deprecated; `/feed/detonation` and `/feed/quick-scan` provide current feed alternatives with different caps (250 versus 2,500).
-8. File/URL quick scans and sandbox submits have deprecated URL-to-file/URL-for-analysis variants; quick-scan-to-full and dropped-file submissions create sandbox analyses and require write policy.
+8. Deprecated URL-to-file and URL-for-analysis submission variants remain unavailable.
+   Quick-scan-to-full and dropped-file submissions create sandbox analyses and require write policy.
 9. `/submit/hash-for-url` computes a lookup hash using POST and is a read; HTTP verbs do not determine policy.
 10. Labs overview documents 425 for analysis in progress; neither overview contract defines a definitive no-analysis error shape.
     Denial and malformed data cannot be interpreted as empty; read-only acceptance must establish missing-analysis fixtures before release.
@@ -411,5 +413,5 @@ Apply the recorded Q1/Q2 decisions in the affected slices; no design approval al
 | T9 | T4, T6 | Experimental hunting YARA list/show/create/update/delete and consuming matches as a guarded write. | Unknown fields, POST partial updates/reset preview, 204 delete, exact guards, consuming-scope preview without request and no retry of consuming operations. |
 | T10 | T4 through T9 | Release README, catalogue-generated reference and skill with every leaf marked read/write, explicit session-hook setup, release-please and npm trusted-publishing workflow. | Offline tarball critical journeys, generated docs/spec freshness, build/lint/tests, public-data review; no publication yet. |
 | T11 | T10 | Separately authorized read-only acceptance with supplied test key on an authorized host. | Doctor/quota, key-level error guidance, known/missing/pending hash contracts and sanitized header/search evidence; no sample/URL upload, sandbox submission, YARA write, consuming matches or guarded artifact download. |
-| T12 | T11 | First npm release using trusted publishing, reviewed version and provenance. | Published integrity, offline version/help, shipped credential schema/catalogue/skill and package contents. |
+| T12 | T11 | First npm release with a reviewed version, following the [host-first publication sequence](../README.md#release-and-hosted-integration). | Published integrity, offline version/help, shipped credential schema/catalogue/skill and package contents. |
 | T13 | T12 | Separate artium-axi PR integrating hybrid-axi at a pinned released npm version, with a managed `api-key` credential for host `hybrid-analysis.com`. | Host fake walking skeleton, managed-secret redaction, restricted-key 403, package/image pinning and write-switch behavior. Submissions, YARA mutations, consuming matches and guarded sample/memory downloads are off by default and listed in the write switch; host policy cannot bypass native preview/execute/exact-confirm or journal. Map uploads/artifacts explicitly. |

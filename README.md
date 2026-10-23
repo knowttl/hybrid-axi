@@ -298,36 +298,9 @@ Raw reads cannot supply headers, credentials, origins or larger budgets.
 
 ## Deviations from the prompt
 
-These are findings from the pinned public specifications and synthetic contract tests, not claims about observed live API behavior.
+The design records the complete [deviation list](docs/design.md#deviations-from-the-prompt), based on the pinned public specifications and synthetic contract tests rather than observed live API behavior.
 No live API acceptance has run yet.
 The [pinned sources](inventory/specs.json) and [operation ledger](docs/design.md#complete-operation-ledger) record the evidence.
-
-1. Stable hash lookup is `GET /search/hash`; POST hash lookup, bulk `/search/hashes` and `/report/summary` are deprecated.
-2. Labs search can return synchronous 200 results or asynchronous 202 IDs, with array envelopes and `query_status`, rather than invariably requiring an async two-request exchange.
-3. Labs recent hunting matches is a consuming GET that marks returned matches delivered.
-   There is no documented non-consuming alternative, so it is a guarded write.
-4. Overview refresh is a GET that fetches fresh external-service data and remains blocked.
-5. Sample delivery is documented as gzip and memory as ZIP, without guaranteed password protection.
-   Guarded downloads save upstream bytes unchanged and warn that protection is unverified.
-6. The deprecated generic `/report/{id}/file/{type}` route mixes normal formats with binary samples and memory; memory has no dedicated binary replacement.
-   Legacy dropped-file routes are deprecated; the current raw route remains blocked under the archive-first requirement, while `dropped-files-v2` supplies the guarded archive.
-7. `feed latest` is deprecated; current detonation and quick-scan feeds have different upstream caps of 250 and 2,500.
-8. Deprecated URL-to-file and URL-for-analysis submission variants remain unavailable.
-   Quick-scan conversion and dropped-file submissions create sandbox analyses and require write policy.
-9. `/submit/hash-for-url` computes a lookup hash through POST and is a read; HTTP verbs alone do not determine policy.
-10. Labs overview documents 425 for pending analysis, and neither overview defines a definitive missing-analysis error shape.
-    Denial, generic 404 and malformed data stay distinct from synthetic verified empty-success responses; live acceptance is still pending.
-11. Key levels are restricted/default/elevated/super.
-    Key inspection contains `api_key` and user details that are always stripped; download auth levels usually use `x-auth-level`, and omitted annotations do not prove permission.
-12. Quota substantially uses JSON-valued `Api-Limits`, `Submission-Limits`, `Quick-Scan-Limits` and `Sample-Download-Limits` headers rather than one uniform rate-limit scheme.
-    Some submission responses document `Submission-Limits"` with a trailing quote, recognized defensively.
-13. The stable changelog says historical `/file-collection/*` routes return 410 from 2026-08-21; none occur in the pinned paths, so they are not recreated.
-14. YARA update is a partial POST, not PUT/PATCH, and supports explicit `reset_counter`.
-    Deletion returns 204 without a JSON body.
-15. The later request adds actual artium-axi integration after npm publication, replacing the original note-only exclusion; it remains a separate host-repository change.
-16. Documented quota `apikey` blocks are projected as `keyQuota` before redaction so quota values survive credential-field scrubbing.
-17. Compact feed fields follow each individual schema without invented common verdicts or timestamps.
-18. Report summary documents 410 `SampleGone` for containers; callers are directed to child reports rather than treating it as missing analysis.
 
 ## Release and hosted integration
 
