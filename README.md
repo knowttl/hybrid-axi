@@ -59,7 +59,8 @@ Ambiguous timeouts and network failures are never replayed.
 
 `hybrid-axi hash show <sha256>` displays the stable overview; `--labs` selects the experimental Labs overview.
 A successfully decoded overview with an explicitly empty report list and no verdict or score reports that no analysis is available and names the hash lookup command to run next.
-This synthetic empty-state contract does not reinterpret 404, permission denial or malformed data as absence; live missing-hash behavior remains part of separately authorized acceptance.
+The empty-state contract is verified against the fake service; live missing-hash verification is pending separately authorized acceptance.
+404, permission denial and malformed data are not interpreted as absence.
 Labs 425 reports analysis pending and provides the exact overview command to retry.
 `hybrid-axi hash search --hash <hash>` uses the current GET lookup for MD5, SHA1, SHA256 or SHA512 and returns associated report identifiers.
 `--hashes-file <path>` instead uses the deprecated bulk POST with a newline-separated MD5/SHA1/SHA256 file, bounded to 1 MiB.
