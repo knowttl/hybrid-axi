@@ -244,9 +244,7 @@ test("raw list truncation hints preserve profile, configuration and query select
 
 test.each([
   ["report", "show", "job", "extra"], ["report", "state", "../escape"], ["report", "memory", "strings", "job"],
-  ["report", "file", "job", "--type", "bin", "--output", "<dir>/artifact"],
-  ["report", "file", "job", "--type", "memory", "--output", "<dir>/artifact"],
-  ["report", "file", "job", "--type", "dropped-files", "--output", "<dir>/artifact"],
+  ["report", "file", "job", "--type", "json", "--output", "<dir>/artifact", "--execute"],
   ["report", "file", "job", "--type", "unknown", "--output", "<dir>/artifact"],
   ["report", "file", "job", "--type", "json", "--type", "xml", "--output", "<dir>/artifact"],
   ["report", "file", "job", "--type", "json"], ["report", "file", "job", "--type", "json", "--output", "-"],

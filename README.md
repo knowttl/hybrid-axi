@@ -2,7 +2,7 @@
 
 Agent-ergonomic CLI for the Hybrid Analysis API, read-only by default, with compact TOON output and explicitly guarded submissions, YARA changes and malware downloads.
 
-This repository ships local credential commands, bounded `doctor` and `quota` reads, hash overviews and searches, experimental Labs queries, report reads and normal artifacts, feeds, system discovery and reviewed raw reads.
+This repository ships local credential commands, bounded `doctor` and `quota` reads, hash overviews and searches, experimental Labs queries, report reads and artifacts, guarded malware downloads, feeds, system discovery and reviewed raw reads.
 No npm release is available yet.
 The [design](docs/design.md) defines the planned command surface, complete stable/Labs operation ledger, credentials, safety boundaries, specification deviations and ordered implementation slices.
 The tool-specific no-mistakes configuration establishes offline validation before feature work.
@@ -48,7 +48,7 @@ The documented `apikey` quota block appears as `keyQuota` so it remains distingu
 Transport errors use a structured `error` object with code, operation and any known status, key level or retry interval.
 When a response was received, `error.rateLimits` preserves its allowlisted header observations, including on 429 and other failures.
 Download denials distinguish an inspected restricted key from an unknown key level and explain the account-vetting requirement.
-Normal report artifact downloads are available; sample, dropped-archive and process-memory downloads remain unavailable.
+See the design's [key-level inspection and error contracts](docs/design.md#transport-and-bounded-work) for download 403 handling.
 
 The closed transport uses only reviewed HTTPS bindings, refuses redirects and shares a 20-second deadline, 20-request ceiling and 20-MiB decoded JSON ceiling per invocation.
 Binary responses have a separate 250-MiB ceiling.
@@ -83,8 +83,14 @@ Labs response envelopes remain array-shaped under `searches`, with result rows u
 
 ## Shared write guards
 
-The shared coordinator is implemented for later submission, guarded download and YARA command slices.
-This slice adds no executable write commands.
+Guarded downloads use the shared coordinator; submission and YARA commands remain planned.
+Enable only the needed operation names in a file profile's `writes.operations` and set `writes.allowWrites` to `true`.
+The download names are `hash-download-bin`, `report-download-bin`, `report-download-dropped-files` and `report-download-memory`.
+Environment profiles cannot enable writes, and forced read-only overrides file allowances.
+Run the download without `--execute` to preview the exact profile, ID, type, destination and confirmation string without an HTTP request.
+Then repeat it with `--execute --confirm '<exact preview confirmation>'` to send once after the private journal reserves the intent.
+`--dry-run` explicitly selects preview and cannot accompany `--execute`.
+Never replay an ambiguous outcome; inspect the journal and exact destination first.
 See [guarded writes and artifact handling](docs/design.md#guarded-writes-and-artifact-handling) for the coordinator's policy, confirmation, journal and recovery contracts.
 
 ## Reports, feeds and reviewed raw reads
@@ -102,7 +108,15 @@ Files are private, bounded to 250 MiB, and saved unchanged without unpacking or 
 Downloads request identity HTTP content encoding and reject any other declared encoding to preserve upstream artifact bytes.
 Types `crt`, `pcap`, `json` and `memory-strings` use dedicated routes.
 Types `xml`, `html`, `pdf`, `maec`, `stix`, `misp`, `misp-json` and `openioc` use the deprecated generic route and disclose that fact in output.
-Samples, dropped archives, process memory and unknown types are refused.
+Types `bin`, `dropped-files` and `memory` require the shared write guards.
+They use the dedicated sample route, current dropped-files-v2 archive route and deprecated generic process-memory route respectively.
+`hash file <sha256> --output <new-file>` downloads the hash's sample under the same guards.
+Unknown types are refused, and execution flags are rejected for ordinary read artifacts.
+
+**Live-malware warning: this artifact may contain executable malware. Save only; do not extract or execute.**
+The spec documents gzip/ZIP delivery without promising password protection.
+Protection is unverified; bytes are saved exactly as provided, without encryption or repackaging.
+Binary contents never go to stdout or the journal, and upstream filenames never choose the destination.
 
 `feed latest` retains the requested deprecated 24-hour feed, capped upstream at 250 reports.
 `feed detonation` and `feed quick-scan` use current feeds capped at 250 and 2,500 respectively.

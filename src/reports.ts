@@ -4,6 +4,7 @@ import { transportBindings, suggestion } from "./catalogue.js";
 import { artifactOutput, saveArtifact } from "./report-file.js";
 import { TransportError, type RequestOptions, type Transport } from "./transport-core.js";
 import { searchCommand } from "./search.js";
+import { guardedArtifacts } from "./download-catalogue.js";
 
 const reportId = /^(?:[A-Za-z0-9_-]{1,256}|[a-f\d]{64}:\d+)$/i;
 const rawSearch = { hashOverview: "hash show", labsOverview: "hash show", hashSearch: "hash search", queryResults: "search results" } as const;
@@ -25,30 +26,35 @@ export function parseReport(argv: string[]) {
     if (!word.startsWith("-")) { positional.push(word); continue; }
     const flagName = word.split("=", 1)[0]!;
     if (!Object.hasOwn(entry.flags, word) || Object.hasOwn(flags, word)) usage(`Unknown or duplicate flag: ${flagName}`);
-    if (["--help", "--full", "--labs"].includes(word)) flags[word] = "true";
+    if (["--help", "--full", "--labs", "--execute", "--dry-run"].includes(word)) flags[word] = "true";
     else {
       const value = argv[++index];
       if (!value?.trim() || value.startsWith("-")) usage(`Flag requires a value: ${flagName}`);
       flags[word] = value!;
     }
   }
-  const needsId = command.startsWith("report ") || command === "api get";
+  const needsId = command.startsWith("report ") || command === "hash file" || command === "api get";
   if (positional.length > (needsId ? 1 : 0)) usage("Unexpected positional argument");
   if (flags["--help"]) return { command, flags, positional, help: { command, ...entry } };
   if (needsId && positional.length !== 1) usage("One positional identifier or API path is required");
   if (command.startsWith("report ") && !reportId.test(positional[0]!)) usage("Expected a job ID or sha256:environmentId");
+  if (command === "hash file" && !/^[a-f\d]{64}$/i.test(positional[0]!)) usage("Expected a SHA256");
+  if (flags["--execute"] && flags["--dry-run"]) usage("--execute and --dry-run are mutually exclusive");
   if (flags["--full"] && flags["--fields"]) usage("Choose --full or --fields");
   if (flags["--fields"] && !/^[A-Za-z_]\w*(,[A-Za-z_]\w*)*$/.test(flags["--fields"])) usage("Use comma-separated field names");
   for (const name of ["--page", "--limit"]) if (flags[name] && (!/^\d+$/.test(flags[name]) || !Number.isSafeInteger(Number(flags[name])) || Number(flags[name]) < 1)) usage(`${name} must be a positive integer`);
   let operation = command;
   let output: string | undefined;
+  let guarded = false;
   const request: RequestOptions = { ...(command.startsWith("report ") ? { pathParams: { id: positional[0]! } } : {}) };
-  if (command === "report file") {
-    const type = flags["--type"];
-    if (!type || !Object.hasOwn(reportArtifacts, type)) usage("Choose exactly one documented normal artifact type; sample, dropped archives and process memory require guarded commands");
+  if (command === "report file" || command === "hash file") {
+    const type = command === "hash file" ? "bin" : flags["--type"];
+    if (!type || !Object.hasOwn(reportArtifacts, type) && !Object.hasOwn(guardedArtifacts, type)) usage("Choose exactly one documented artifact type");
     if (!flags["--output"]) usage("--output is required");
     output = artifactOutput(flags["--output"]!);
-    operation = `report artifact ${type}`;
+    guarded = command === "hash file" || Object.hasOwn(guardedArtifacts, type!);
+    if (!guarded && ["--execute", "--dry-run", "--confirm"].some((name) => flags[name] !== undefined)) usage("Execution flags apply only to guarded artifact types");
+    operation = command === "hash file" ? "hash-download-bin" : guarded ? guardedArtifacts[type as keyof typeof guardedArtifacts].operation : `report artifact ${type}`;
   } else if (command === "api get") {
     const path = positional[0]!;
     const [pathname, queryText] = path.split("?");
@@ -86,7 +92,7 @@ export function parseReport(argv: string[]) {
     }
     if (command === "feed abuse") request.query = { page: Number(flags["--page"] ?? "1") };
   }
-  return { command, flags, positional, operation, request, output };
+  return { command, flags, positional, operation, request, output, guarded };
 }
 
 export async function reportCommand(parsed: NonNullable<ReturnType<typeof parseReport>>, transport: Transport): Promise<Record<string, unknown>> {

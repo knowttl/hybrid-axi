@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { OperationBinding } from "./transport-core.js";
+import { downloadFlags, downloadWarnings, guardedArtifacts, hashDownloadCatalogue } from "./download-catalogue.js";
 
 const text = z.string().nullable();
 const integer = z.number().int().nullable();
@@ -74,6 +75,7 @@ export const reportBindings: Readonly<Record<string, OperationBinding>> = {
 };
 
 export const reportCatalogue: Record<string, { description: string; flags: Record<string, string>; examples: string[] }> = {
+  ...hashDownloadCatalogue,
   ...Object.fromEntries(Object.entries(reportReads).map(([command, binding]) => [command, {
     description: binding.description,
     flags: { ...common, ...(binding.rows ? list : {}), ...(command === "feed abuse" ? { "--page": "Upstream page; default 1" } : {}),
@@ -81,8 +83,8 @@ export const reportCatalogue: Record<string, { description: string; flags: Recor
     examples: [`hybrid-axi ${command}${command.startsWith("report ") ? " <id>" : ""}${binding.query && command !== "feed abuse" ? " --filename <name>" : ""}`,
       `hybrid-axi ${command} --help`],
   }])),
-  "report file": { description: "Save one normal artifact unchanged to a new private file, bounded at 250 MiB; legacy formats disclose their deprecated route",
-    flags: { "--help": common["--help"], "--config": common["--config"], "--profile": common["--profile"], "--type": `Required single type: ${Object.keys(reportArtifacts).join(", ")}`, "--output": "Required new file in an existing directory; never stdout or overwrite" },
+  "report file": { description: `Save one artifact unchanged to a new private file, bounded at 250 MiB; bin, dropped-files and memory require write scope, --execute and exact --confirm. Memory and legacy report formats use the deprecated generic route. ${downloadWarnings.join(" ")}`,
+    flags: { "--help": common["--help"], "--config": common["--config"], "--profile": common["--profile"], "--type": `Required single type: ${[...Object.keys(reportArtifacts), ...Object.keys(guardedArtifacts)].join(", ")}`, "--output": "Required new file in an existing directory; never stdout or overwrite", ...downloadFlags },
     examples: ["hybrid-axi report file <id> --type json --output report.json", "hybrid-axi report file <id> --type pcap --output capture.gz"] },
   "api get": { description: "Reviewed JSON GET only: same decoders, redaction, fields and bounds as named reads; rejects binary, mixed-effect, consuming, refresh and unbound routes",
     flags: { ...common, ...list, "--labs": "Select experimental Labs API; default stable" },
