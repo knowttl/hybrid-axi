@@ -29,6 +29,7 @@ try {
       ["node_modules/typescript/bin/tsc", "-p", "tsconfig.json"],
       ["node_modules/vitest/vitest.mjs", ...vitestArgs],
       ["scripts/specs.mjs", "--check"],
+      ["scripts/generate-docs.mjs", "--check"],
     ]) {
       const result = spawnSync(process.execPath, ["--import", guard, fileURLToPath(new URL(entry, root)), ...args], {
         stdio: "inherit", env: { ...process.env, NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ""} --import=${guard}`.trim() },

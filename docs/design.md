@@ -50,7 +50,8 @@ The session hides operation binding, credential resolution, pagination, deadline
 Keep related domain functions together; avoid forwarding wrappers per endpoint.
 One typed catalogue owns leaf grammar, flags, effects, operation IDs, method/path, request schemas, response decoders, default fields, auth notes and evidence.
 The ledger records evidence and exclusions; it never grants executable access by itself.
-Generate help, command reference, installable skill and host-facing inventory from the catalogue.
+Generate help, command reference and installable skill from the catalogue.
+The non-executable capability inventory comes from the pinned specifications and this document's operation ledger through `scripts/specs.mjs`.
 Use `bin/`, `src/`, `test/`, `scripts/`, `inventory/`, `specs/`, `skills/hybrid-axi/` and strict ESM packaging consistent with vectra-axi.
 Ship `axi-credential.schema.json` and an importable reviewed catalogue for later hosted use.
 
@@ -137,7 +138,8 @@ Never store keys or full response bodies in journals.
 
 Use noun/subnoun/verb grammar and kebab-case flags.
 Retain the requested positional `hash show <sha256>`, `report show <id>` and `api get <path>` shapes.
-Common selectors are `--config` and `--profile`; every leaf supports concise `--help` with defaults, required inputs and two or three examples.
+Profile commands share `--config` and `--profile`; `setup hooks` accepts only `--scope` and `--help`.
+Every leaf supports concise `--help` with defaults, required inputs and examples.
 Reject unknown flags, unexpected/duplicate arguments and invalid combinations before credential resolution or HTTP, with exit 2 and valid flags inline.
 No interactive prompts are needed.
 
@@ -334,39 +336,8 @@ Blocked rows identify replacements or explain exclusions; they do not silently a
 
 ## Deviations from the prompt
 
-These are specification findings, not observed live-API behavior.
-No live behavior was probed in this design slice.
-
-1. Stable hash lookup is now `GET /search/hash`; POST hash lookup is deprecated, as are bulk `/search/hashes` and `/report/summary`.
-2. Labs `search run` can return synchronous 200 results or asynchronous 202 query IDs; it is not invariably an async two-request exchange.
-   Its schemas wrap results/IDs in arrays, and async status is `query_status`; preserve the pinned shape rather than inventing a job envelope.
-3. Labs recent hunting matches are consuming GETs: returned matches are marked delivered and will not be returned again.
-   No non-consuming matches-list alternative appears in the snapshot; this command is a guarded write by explicit decision.
-4. Overview refresh is a GET that fetches fresh external-service data; it is blocked rather than exposed as a raw read.
-5. Sample downloads declare `application/gzip`; generic binary downloads describe gzip and memory describes ZIP.
-   The specs do not promise password protection, contrary to the parenthetical expectation in the original download answer; the confirmed decision below allows guarded downloads unchanged with a warning.
-6. `/report/{id}/file/{type}` is deprecated and mixes ordinary report formats with `bin` and `memory`; memory has no dedicated binary replacement in the spec.
-   Dropped-file legacy routes are deprecated, a current raw route exists, and `/dropped-files-v2` provides an archive; the raw route stays blocked under the archive-first requirement.
-7. `feed latest` is deprecated; `/feed/detonation` and `/feed/quick-scan` provide current feed alternatives with different caps (250 versus 2,500).
-8. File/URL quick scans and sandbox submits have deprecated URL-to-file/URL-for-analysis variants; quick-scan-to-full and dropped-file submissions create sandbox analyses and require write policy.
-9. `/submit/hash-for-url` computes a lookup hash using POST and is a read; HTTP verbs do not determine policy.
-10. Labs overview documents 425 for analysis in progress; neither overview contract defines a definitive no-analysis error shape.
-    Denial and malformed data cannot be interpreted as empty; read-only acceptance must establish missing-analysis fixtures before release.
-11. The key-level vocabulary is restricted/default/elevated/super, and `/key/current` includes the secret `api_key` plus user information that must be stripped.
-    Download auth levels are usually in `x-auth-level`, while newer operations sometimes omit that annotation; absence is not permission evidence.
-12. Quota is conveyed substantially through JSON-valued `Api-Limits`, `Submission-Limits`, `Quick-Scan-Limits` and `Sample-Download-Limits` headers, not a uniform standard rate-limit header set.
-    Some submit responses spell `Submission-Limits"` with a trailing quote.
-13. The stable changelog says all `/file-collection/*` routes return 410 from 2026-08-21; there are no such operations in these pinned paths.
-    Do not recreate them from historical notes.
-14. YARA update is POST, not PUT/PATCH; it updates supplied fields only and also exposes `reset_counter`.
-    A reset must be explicit in payload and preview; deletion returns 204 without a JSON body.
-15. The later request adds actual artium-axi integration after publication, replacing the original note-only exclusion; T13 is a separate host-repository PR.
-16. The CLI projects the documented `SubmissionQuota` per-key `apikey` blocks as `keyQuota` before sensitive-field redaction.
-    This preserves quota values while keeping the credential-field scrubber intact.
-17. Compact feed output follows the individual schemas rather than inventing common verdict or timestamp values.
-    The [report catalogue](../src/report-catalogue.ts) owns the executable field selections and decoders.
-18. Report summary documents HTTP 410 with `SampleGone` for container files.
-    Keep it distinct from a successful summary and direct callers to the children read; do not interpret it as a missing analysis.
+The release [README deviation list](../README.md#deviations-from-the-prompt) owns all 18 findings, including their implementation consequences.
+They are specification findings rather than observed live-API behavior; no live behavior was probed during design or automated verification.
 
 ## Confirmed safety decisions
 
@@ -411,5 +382,5 @@ Apply the recorded Q1/Q2 decisions in the affected slices; no design approval al
 | T9 | T4, T6 | Experimental hunting YARA list/show/create/update/delete and consuming matches as a guarded write. | Unknown fields, POST partial updates/reset preview, 204 delete, exact guards, consuming-scope preview without request and no retry of consuming operations. |
 | T10 | T4 through T9 | Release README, catalogue-generated reference and skill with every leaf marked read/write, explicit session-hook setup, release-please and npm trusted-publishing workflow. | Offline tarball critical journeys, generated docs/spec freshness, build/lint/tests, public-data review; no publication yet. |
 | T11 | T10 | Separately authorized read-only acceptance with supplied test key on an authorized host. | Doctor/quota, key-level error guidance, known/missing/pending hash contracts and sanitized header/search evidence; no sample/URL upload, sandbox submission, YARA write, consuming matches or guarded artifact download. |
-| T12 | T11 | First npm release using trusted publishing, reviewed version and provenance. | Published integrity, offline version/help, shipped credential schema/catalogue/skill and package contents. |
+| T12 | T11 | First npm release with a reviewed version, following the [host-first publication sequence](../README.md#release-and-hosted-integration). | Published integrity, offline version/help, shipped credential schema/catalogue/skill and package contents. |
 | T13 | T12 | Separate artium-axi PR integrating hybrid-axi at a pinned released npm version, with a managed `api-key` credential for host `hybrid-analysis.com`. | Host fake walking skeleton, managed-secret redaction, restricted-key 403, package/image pinning and write-switch behavior. Submissions, YARA mutations, consuming matches and guarded sample/memory downloads are off by default and listed in the write switch; host policy cannot bypass native preview/execute/exact-confirm or journal. Map uploads/artifacts explicitly. |

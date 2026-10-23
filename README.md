@@ -4,8 +4,112 @@ Agent-ergonomic CLI for the Hybrid Analysis API, read-only by default, with comp
 
 This repository ships local credential commands, bounded `doctor` and `quota` reads, hash overviews and searches, experimental Labs queries and hunting, report reads and normal artifacts, guarded malware downloads, feeds, system discovery, reviewed raw reads, guarded sandbox submissions and quick scans.
 No npm release is available yet.
-The [design](docs/design.md) defines the planned command surface, complete stable/Labs operation ledger, credentials, safety boundaries, specification deviations and ordered implementation slices.
+The [command reference](docs/commands.md) documents every shipped leaf, flag and example from the executable catalogue.
+The [design](docs/design.md) defines the complete stable/Labs operation ledger, credentials, safety boundaries and ordered implementation slices.
 The tool-specific no-mistakes configuration establishes offline validation before feature work.
+
+## Installation and agent integration
+
+Requires Node.js 22.12 or later.
+After the first npm publication, install globally or run without a global install:
+
+```sh
+npm install -g @knowttl/hybrid-axi
+hybrid-axi --version
+npx -y @knowttl/hybrid-axi --help
+```
+
+Until publication, use the [development commands](#development) to build and run `node bin/hybrid-axi.js`.
+Home, setup, profile discovery and authentication status are local; explicit API commands use the selected profile.
+Command output is TOON on stdout, including structured errors; bare `--version`, `-v` and `-V` print only the package version.
+Exit codes are 0 for success, 1 for runtime failure and 2 for invalid input.
+
+For ambient local profile context, explicitly opt in after installing the CLI:
+
+```sh
+hybrid-axi setup hooks
+hybrid-axi setup hooks --scope project
+```
+
+The default user scope installs Claude Code SessionStart hooks, Codex SessionStart hooks and an OpenCode ambient plugin.
+Project scope writes `.claude`, `.codex` and `.opencode` in the current directory instead.
+Both scopes enable Codex's hooks feature in user configuration.
+User configuration honors `CLAUDE_CONFIG_DIR`, `CODEX_HOME` and `XDG_CONFIG_HOME` for the respective agent.
+Setup preserves unrelated configuration, repairs moved executable paths and makes repeated installs a no-op.
+On POSIX, the hook uses a PATH-verified binary name when it resolves to this installation, otherwise its quoted absolute path.
+On Windows, Claude Code uses Node with the installed entry as an argument; Codex uses a PowerShell command that invokes Node with that entry.
+OpenCode runs the installed entry directly through Node.
+Restart the agent session after setup.
+Context uses `HYBRID_AXI_CONFIG` and `HYBRID_AXI_PROFILE` from the session environment; it never makes an API call or reads a credential file.
+Ordinary commands and package installation never install hooks.
+
+For on-demand discovery instead, install the generated [agent skill](skills/hybrid-axi/SKILL.md):
+
+```sh
+npx skills add knowttl/hybrid-axi --skill hybrid-axi
+```
+
+The hook provides ambient context; the skill provides the command and safety reference when needed.
+Either integration is sufficient; using both is optional.
+
+## Command catalogue
+
+Every leaf is marked read or write below.
+`report file` is read for ordinary report types and write for `bin`, `dropped-files` and `memory`.
+Quick scans are read exceptions that transmit data, and `setup hooks` writes only local agent configuration.
+
+<!-- command-registry:start -->
+| Command | Effect | Purpose |
+|---|---|---|
+| `hybrid-axi api get` | read | Reviewed JSON GET only: same decoders, redaction, fields and bounds as named reads; rejects binary, mixed-effect, consuming, refresh and unbound routes |
+| `hybrid-axi auth status` | read | Verify local SecretRef availability and file protections without HTTP |
+| `hybrid-axi config path` | read | Show selected config and platform state paths without reading files |
+| `hybrid-axi doctor` | read | Verify credentials and read key level, submission quota and observed limit headers; other access is unverified |
+| `hybrid-axi feed abuse` | read | Read one page of qualified-removal hashes |
+| `hybrid-axi feed detonation` | read | Read the most recent report feed, capped upstream at 250 |
+| `hybrid-axi feed latest` | read | Deprecated latest feed, at most 250 reports from 24h; use feed detonation for the current feed |
+| `hybrid-axi feed quick-scan` | read | Read the most recent successful quick scans, capped upstream at 2500 |
+| `hybrid-axi hash file` | write | Save one guarded sample unchanged to a new private file, bounded at 250 MiB. Live-malware warning: this artifact may contain executable malware. Save only; do not extract or execute. The spec documents gzip/ZIP delivery without promising password protection. Protection is unverified; bytes are saved exactly as provided. |
+| `hybrid-axi hash search` | read | Find associated reports by hash, or deprecated bulk lookup from a newline-separated file |
+| `hybrid-axi hash show` | read | Show stable SHA256 overview; --labs selects the experimental Labs overview |
+| `hybrid-axi home` | read | Show local profile and policy without contacting Hybrid Analysis |
+| `hybrid-axi hunting matches` | write | Experimental Labs: consuming GET marks returned matches delivered; preview sends no request; never automatically replayed |
+| `hybrid-axi hunting yara create` | write | Experimental Labs: create own YARA rule; preview first, then --execute and exact --confirm. |
+| `hybrid-axi hunting yara delete` | write | Experimental Labs: delete own YARA rule; preview first, then --execute and exact --confirm. |
+| `hybrid-axi hunting yara list` | read | Experimental Labs: list own YARA rules; unknown response fields remain available |
+| `hybrid-axi hunting yara show` | read | Experimental Labs: show own YARA rule by required positional ID |
+| `hybrid-axi hunting yara update` | write | Experimental Labs: update own YARA rule; preview first, then --execute and exact --confirm. Partial POST; explicit reset_counter:true resets the all-time matches counter. |
+| `hybrid-axi profile list` | read | List configured profiles without resolving keys or contacting Hybrid Analysis |
+| `hybrid-axi quick-scan file` | read | Read exception: sends the sample to Hybrid Analysis without a write gate; never automatically replays |
+| `hybrid-axi quick-scan scanners` | read | Read available quick-scan services and supported scan types |
+| `hybrid-axi quick-scan show` | read | Read a known quick-scan result and finished status without sending the sample again |
+| `hybrid-axi quick-scan submit` | write | Preview conversion of a quick scan into a sandbox analysis; requires write policy, --execute and exact --confirm |
+| `hybrid-axi quick-scan url` | read | Read exception: sends the URL to Hybrid Analysis without a write gate; never automatically replays |
+| `hybrid-axi quota` | read | Read key level, submission quota and observed limit headers with two bounded requests and no retries |
+| `hybrid-axi report children` | read | List child report identifiers |
+| `hybrid-axi report file` | read/write | Save one artifact unchanged to a new private file, bounded at 250 MiB; bin, dropped-files and memory require write scope, --execute and exact --confirm. Memory and legacy report formats use the deprecated generic route. Live-malware warning: this artifact may contain executable malware. Save only; do not extract or execute. The spec documents gzip/ZIP delivery without promising password protection. Protection is unverified; bytes are saved exactly as provided. |
+| `hybrid-axi report memory hex` | read | Read structured hex rows for exactly one memory filename |
+| `hybrid-axi report memory list` | read | List memory dump metadata without downloading process memory |
+| `hybrid-axi report memory strings` | read | Read extracted strings for exactly one memory filename |
+| `hybrid-axi report screenshots` | read | Read bounded Base64 screenshots; image text is previewed unless --full |
+| `hybrid-axi report show` | read | Show a report summary for a job ID or sha256:environmentId |
+| `hybrid-axi report state` | read | Show submission state |
+| `hybrid-axi search results` | read | Experimental Labs results for a known query ID; never starts a query |
+| `hybrid-axi search run` | read | Experimental Labs query: start once, then fetch asynchronous results once; resume pending queries by ID |
+| `hybrid-axi search terms` | read | Search using at least one documented named filter |
+| `hybrid-axi setup` | read | Show a read-only config template and SecretRef setup guidance without writing files |
+| `hybrid-axi setup hooks` | write | Explicitly install or repair local-only Claude Code, Codex and OpenCode session integrations; no API calls |
+| `hybrid-axi submit dropped-file` | write | Preview analysis of an exact dropped SHA256 from a report; the API accepts no environment override |
+| `hybrid-axi submit file` | write | Preview a sandbox file submission; sending requires write policy, --execute and exact --confirm |
+| `hybrid-axi submit url` | write | Preview a sandbox URL submission; sending requires write policy, --execute and exact --confirm |
+| `hybrid-axi system action-scripts` | read | List available action scripts |
+| `hybrid-axi system configuration` | read | Read documented partial public configuration with sensitive fields redacted |
+| `hybrid-axi system environments` | read | List execution environments |
+| `hybrid-axi system queue-size` | read | Read the queue size |
+| `hybrid-axi system stats` | read | Read system statistics |
+| `hybrid-axi system total-submissions` | read | Read the submission aggregate |
+| `hybrid-axi system version` | read | Read system versions |
+<!-- command-registry:end -->
 
 ## Local credentials
 
@@ -15,7 +119,7 @@ Set `HYBRID_AXI_API_KEY` in the environment, or reference a private UTF-8 file w
 Keys are never accepted in arguments, stored by the tool or sent by these local commands.
 `hybrid-axi auth status` verifies availability and file protections without printing the key or contacting the API.
 `hybrid-axi profile list` lists configured profiles; `hybrid-axi config path` shows configuration and state locations.
-Every command supports `--help`, `--config <path>` and `--profile <name>`.
+Every command supports `--help`; profile commands also accept `--config <path>` and `--profile <name>`.
 
 Config selection is `--config`, `HYBRID_AXI_CONFIG`, then the platform default.
 Profile selection is `--profile`, `HYBRID_AXI_PROFILE`, a complete environment profile, the configured default, then the sole profile.
@@ -194,6 +298,59 @@ Named and raw reads share transport, decoders, redaction and output policies.
 Full URLs, encoded or traversing paths, binary routes, the mixed generic artifact route, consuming matches, refreshes, writes and unbound operations are blocked.
 Raw reads cannot supply headers, credentials, origins or larger budgets.
 
+## Deviations from the prompt
+
+This is the complete deviation list from the pinned public specifications and synthetic contract tests, rather than observed live API behavior.
+No live API acceptance has run yet.
+The [pinned sources](inventory/specs.json) and [operation ledger](docs/design.md#complete-operation-ledger) record the evidence.
+
+1. Stable hash lookup is now `GET /search/hash`; POST hash lookup is deprecated, as are bulk `/search/hashes` and `/report/summary`.
+2. Labs `search run` can return synchronous 200 results or asynchronous 202 query IDs; it is not invariably an async two-request exchange.
+   Its schemas wrap results/IDs in arrays, and async status is `query_status`; preserve the pinned shape rather than inventing a job envelope.
+3. Labs recent hunting matches are consuming GETs: returned matches are marked delivered and will not be returned again.
+   No non-consuming matches-list alternative appears in the snapshot; this command is a guarded write by explicit decision.
+4. Overview refresh is a GET that fetches fresh external-service data; it is blocked rather than exposed as a raw read.
+5. Sample downloads declare `application/gzip`; generic binary downloads describe gzip and memory describes ZIP.
+   The specs do not promise password protection, contrary to the original download expectation; guarded downloads save upstream bytes unchanged with a warning.
+6. `/report/{id}/file/{type}` is deprecated and mixes ordinary report formats with `bin` and `memory`; memory has no dedicated binary replacement in the spec.
+   Dropped-file legacy routes are deprecated, a current raw route exists, and `/dropped-files-v2` provides an archive; the raw route stays blocked under the archive-first requirement.
+7. `feed latest` is deprecated; `/feed/detonation` and `/feed/quick-scan` provide current feed alternatives with different caps (250 versus 2,500).
+8. Deprecated URL-to-file and URL-for-analysis submission variants remain unavailable.
+   Quick-scan-to-full and dropped-file submissions create sandbox analyses and require write policy.
+9. `/submit/hash-for-url` computes a lookup hash using POST and is a read; HTTP verbs do not determine policy.
+10. Labs overview documents 425 for analysis in progress; neither overview contract defines a definitive no-analysis error shape.
+    Denial and malformed data cannot be interpreted as empty; live missing-analysis acceptance remains pending.
+11. The key-level vocabulary is restricted/default/elevated/super, and `/key/current` includes the secret `api_key` plus user information that must be stripped.
+    Download auth levels are usually in `x-auth-level`, while newer operations sometimes omit that annotation; absence is not permission evidence.
+12. Quota is conveyed substantially through JSON-valued `Api-Limits`, `Submission-Limits`, `Quick-Scan-Limits` and `Sample-Download-Limits` headers, not a uniform standard rate-limit header set.
+    Some submit responses spell `Submission-Limits"` with a trailing quote.
+13. The stable changelog says all `/file-collection/*` routes return 410 from 2026-08-21; there are no such operations in these pinned paths.
+    Do not recreate them from historical notes.
+14. YARA update is POST, not PUT/PATCH; it updates supplied fields only and also exposes `reset_counter`.
+    A reset must be explicit in payload and preview; deletion returns 204 without a JSON body.
+15. The later request adds actual artium-axi integration after publication, replacing the original note-only exclusion; it remains a separate host-repository PR.
+16. The CLI projects the documented `SubmissionQuota` per-key `apikey` blocks as `keyQuota` before sensitive-field redaction.
+    This preserves quota values while keeping the credential-field scrubber intact.
+17. Compact feed output follows the individual schemas rather than inventing common verdict or timestamp values.
+    The [report catalogue](src/report-catalogue.ts) owns the executable field selections and decoders.
+18. Report summary documents HTTP 410 with `SampleGone` for container files.
+    Keep it distinct from a successful summary and direct callers to the children read; do not interpret it as a missing analysis.
+
+## Release and hosted integration
+
+Release Please prepares version and changelog changes on `main`.
+The release workflow is limited to release management, build, artifact freshness, packing and npm publication with provenance; there is no pull-request test workflow.
+All tests and public-data review run locally before delivery.
+Nothing is published by this release-surface change.
+The first npm publication runs from the authorized main-branch host after separate read-only acceptance.
+The owner then configures npm trusted publishing for `knowttl/hybrid-axi`, workflow `release-please.yml`, and enables the repository variable `NPM_TRUSTED_PUBLISHING=true`.
+Until that explicit setup, the workflow's publication job is disabled.
+Subsequent release tags can publish the packed artifact through GitHub OIDC with `id-token: write` and `npm publish --provenance`, without a stored npm token.
+
+artium-axi integration follows npm publication in a separate PR, pinned to the released package and using a managed `api-key` for `hybrid-analysis.com`.
+Submissions, YARA mutations, consuming matches and guarded downloads stay off by default.
+Host policy cannot bypass native preview, execution, exact confirmation or journaling; uploads and artifacts need explicit host mapping.
+
 ## Development
 
 Use Node.js 22.12+ and Corepack with the pinned pnpm version.
@@ -205,6 +362,7 @@ corepack pnpm run build
 corepack pnpm run lint
 corepack pnpm test
 corepack pnpm run spec:check
+corepack pnpm run docs:check
 node bin/hybrid-axi.js --version
 node bin/hybrid-axi.js --help
 ```
@@ -212,8 +370,8 @@ node bin/hybrid-axi.js --help
 Preparation reuses the local dependency cache without network access and isolates HOME, XDG and agent state.
 Tests select affected tests plus fixed packaged-CLI and selection baselines; infrastructure changes run the full suite.
 Missing comparison bases or baseline files fail closed.
-The test command builds the package and verifies specification freshness under a network-denying preload inherited by child Node processes.
-Packed tests install local dependency tarballs with npm offline, then exercise version, help, local setup/auth status and rejected input.
+The test command builds the package and verifies specification and documentation freshness under a network-denying preload inherited by child Node processes.
+Packed tests install local dependency tarballs with npm offline, then exercise version, help, local setup/auth status, opt-in hooks and rejected input.
 Transport and CLI tests route validated logical URLs to our synthetic HTTPS upstream, trusting only its test certificate.
 The network preload denies external sockets, DNS and arbitrary subprocesses, and propagates to Node descendants even with a fresh environment.
 No validation command calls Hybrid Analysis or provisions a service.
@@ -222,6 +380,8 @@ Live API acceptance belongs to the separately authorized T11 slice.
 `corepack pnpm run spec:generate` regenerates declarations and the non-executable capability inventory from the pinned bytes and design ledger.
 `spec:check` checks SHA-256 hashes, all 62 method/path classifications and deterministic generated artifacts offline.
 New inventory entries do not enable commands; executable bindings belong to `src/catalogue.ts`.
+After building, `corepack pnpm run docs:generate` regenerates this command table, `docs/commands.md` and `skills/hybrid-axi/SKILL.md` from that catalogue.
+`docs:check` fails when any committed generated document is stale.
 
 `.no-mistakes.yaml` separates offline preparation, affected tests and linting, and declares that no hosted CI is configured.
 It must reach `main` before feature validation can rely on its trusted commands and review rules.
