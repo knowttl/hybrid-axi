@@ -217,7 +217,8 @@ State readers can call only reviewed read bindings.
 Execution rereads optional state after intent reservation; changed state aborts with `PREVIEW_CHANGED` and records `NOT_SENT`.
 Scope and forced read-only are checked again after approval and immediately before authorization.
 
-Submission confirmation binds profile, operation, file SHA-256 or exact normalized URL, environment ID and canonical option digest.
+Submission confirmation binds profile, operation, exact target selectors and a digest of the complete prepared request.
+The [submission definitions](../src/submission-catalogue.ts) own each operation's target selectors; see [README](../README.md#submissions-and-quick-scans) for shipped submission behavior.
 Every submission preview states: **The sample and its report can become visible to the community.**
 YARA creates bind the exact identifier and payload digest; update/delete bind exact rule ID and proposed change digest.
 Download confirmation binds profile, report/hash ID, artifact kind, any dropped hash or memory selector and destination.
