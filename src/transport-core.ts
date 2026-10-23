@@ -25,10 +25,11 @@ export type RequestOptions = {
 export type Transport = {
   request(operation: string, options?: RequestOptions): Promise<{ status: number; body: unknown; rateLimits: Record<string, unknown> }>;
 };
+export type PreparedRequest = Readonly<{ operation: string; method: string; url: string; body?: string; effect: "read" | "write" }>;
 export class TransportError extends Error {
   constructor(readonly error: {
     code: string; message: string; operation: string; status?: number; keyLevel?: string;
-    requiredKeyLevel?: string; retryAfter?: number; rateLimits?: Record<string, unknown>;
+    requiredKeyLevel?: string; retryAfter?: number; rateLimits?: Record<string, unknown>; auditId?: string;
   }, readonly help: readonly string[] = []) {
     super(error.message);
     this.name = "TransportError";
@@ -43,7 +44,7 @@ export function constructTransport(options: { credential: Credential; origin?: s
   fetch: typeof globalThis.fetch;
   now?: () => number;
   consumeWriteAuthorization?: (authorization: unknown, request: { operation: string; method: string; url: string; body?: string }) => boolean;
-}): Transport {
+}): Transport & { prepare(operation: string, options?: RequestOptions): PreparedRequest } {
   const fail = (code: string, message: string, operation = "transport", details = {}, help: readonly string[] = []): never => {
     throw new TransportError({ code, message, operation, ...details }, help);
   };
@@ -116,28 +117,36 @@ export function constructTransport(options: { credential: Credential; origin?: s
     return result;
   }
 
+  function prepare(operation: string, input: RequestOptions = {}): PreparedRequest {
+    const binding = Object.hasOwn(bindings, operation) ? bindings[operation] : undefined;
+    if (!binding) fail("OPERATION_BLOCKED", "Operation is not bound in the executable catalogue");
+    const reviewed = binding!;
+    const url = destination(operation, reviewed, input);
+    let body: string | undefined;
+    if (reviewed.body) {
+      const decoded = reviewed.body.safeParse(input.body);
+      if (!decoded.success) fail("VALIDATION_ERROR", "Invalid operation request body", operation);
+      if (reviewed.bodyEncoding === "form") {
+        const form = new URLSearchParams();
+        for (const [name, value] of Object.entries(decoded.data as Record<string, unknown>)) {
+          if (value !== undefined) for (const entry of Array.isArray(value) ? value : [value]) form.append(name, String(entry));
+        }
+        body = form.toString();
+      } else body = JSON.stringify(decoded.data);
+    } else if (input.body !== undefined) {
+      fail("VALIDATION_ERROR", "This operation does not accept a request body", operation);
+    }
+    return Object.freeze({ operation, method: reviewed.method, url: url.href, effect: reviewed.effect,
+      ...(body !== undefined ? { body } : {}) });
+  }
+
   return {
+    prepare,
     async request(operation, input = {}) {
-      const binding = Object.hasOwn(bindings, operation) ? bindings[operation] : undefined;
-      if (!binding) fail("OPERATION_BLOCKED", "Operation is not bound in the executable catalogue");
-      const reviewed = binding!;
-      const url = destination(operation, reviewed, input);
-      let body: string | undefined;
-      if (reviewed.body) {
-        const decoded = reviewed.body.safeParse(input.body);
-        if (!decoded.success) fail("VALIDATION_ERROR", "Invalid operation request body", operation);
-        if (reviewed.bodyEncoding === "form") {
-          const form = new URLSearchParams();
-          for (const [name, value] of Object.entries(decoded.data as Record<string, unknown>)) {
-            if (value !== undefined) for (const entry of Array.isArray(value) ? value : [value]) form.append(name, String(entry));
-          }
-          body = form.toString();
-        } else body = JSON.stringify(decoded.data);
-      } else if (input.body !== undefined) {
-        fail("VALIDATION_ERROR", "This operation does not accept a request body", operation);
-      }
+      const { url, body, effect: _effect, ...identity } = prepare(operation, input);
+      const reviewed = bindings[operation]!;
       if (reviewed.effect === "write" && !dependencies.consumeWriteAuthorization?.(input.authorization,
-        { operation, method: reviewed.method, url: url.href, ...(body !== undefined ? { body } : {}) })) {
+        { ...identity, url, ...(body !== undefined ? { body } : {}) })) {
         fail("WRITE_DENIED", "This operation requires guarded write authorization", operation);
       }
       for (let attempt = 0; ; attempt++) {
@@ -152,7 +161,7 @@ export function constructTransport(options: { credential: Credential; origin?: s
         const timer = setTimeout(cancel, remaining);
         let rateLimits: Record<string, unknown> | undefined;
         try {
-          const response = await dependencies.fetch(url.href, {
+          const response = await dependencies.fetch(url, {
             method: reviewed.method, headers: { "api-key": apiKey, "user-agent": "hybrid-axi", accept: reviewed.download ? "*/*" : "application/json",
               ...(body !== undefined ? { "content-type": reviewed.bodyEncoding === "form" ? "application/x-www-form-urlencoded" : "application/json" } : {}) },
             ...(body !== undefined ? { body } : {}), redirect: "error", signal: controller.signal,

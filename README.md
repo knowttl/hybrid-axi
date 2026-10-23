@@ -81,6 +81,12 @@ Hash and search commands use compact output by default.
 `--full` exposes all decoded fields; `--fields <comma-separated-names>` selects fields at each response level, including new experimental fields, after sensitive-field redaction.
 Labs response envelopes remain array-shaped under `searches`, with result rows under `results`.
 
+## Shared write guards
+
+The shared coordinator is implemented for later submission, guarded download and YARA command slices.
+This slice adds no executable write commands.
+See [guarded writes and artifact handling](docs/design.md#guarded-writes-and-artifact-handling) for the coordinator's policy, confirmation, journal and recovery contracts.
+
 ## Development
 
 Use Node.js 22.12+ and Corepack with the pinned pnpm version.

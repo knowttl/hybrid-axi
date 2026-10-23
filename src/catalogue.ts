@@ -1,8 +1,12 @@
 import { keyDecoder, quotaDecoder } from "./key-contracts.js";
 import type { OperationBinding } from "./transport-core.js";
 import { searchBindings, searchCatalogue } from "./search-catalogue.js";
+import type { MutationOperation } from "./writes-core.js";
 
 export const DESCRIPTION = "Agent-friendly CLI for Hybrid Analysis, under construction";
+
+// Future named write slices register reviewed definitions here. T6 exposes no commands.
+export const mutationOperations: Readonly<Record<string, MutationOperation>> = Object.freeze({});
 
 // Planned inventory entries never authorize execution. Feature slices bind reviewed operations here.
 export const transportBindings: Readonly<Record<string, OperationBinding>> = Object.freeze({
