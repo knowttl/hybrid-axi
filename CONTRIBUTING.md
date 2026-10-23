@@ -2,8 +2,8 @@
 
 Keep changes focused and describe the problem, resulting behavior, scope, and verification in the pull request.
 Follow [the design](docs/design.md); the operation ledger is evidence, not permission to expose arbitrary HTTP.
-This design slice ships no executable commands.
-The scaffold slice establishes development commands before feature work starts.
+The scaffold ships version, home and help only; API commands arrive in later slices.
+The authoritative commands are `corepack pnpm run build`, `corepack pnpm run lint`, `corepack pnpm test`, and `corepack pnpm run spec:check`.
 
 ## TypeScript conventions
 
@@ -32,19 +32,19 @@ Isolate HOME, XDG directories, agent configuration directories and filesystem st
 Production origin checks remain intact; inject the fake transport at construction rather than exposing a runtime localhost override.
 Use Vitest and test through CLI or session interfaces at the lowest level that sees the behavior.
 Mock only genuine boundaries such as HTTP, clock, randomness and platform ACL operations.
-Do not add mock-echo checks, source-string assertions, private-helper tests or checks already guaranteed by types.
+No tautological tests: do not add mock-echo checks, source-string assertions, private-helper tests or checks already guaranteed by types.
 Each test covers one meaningful behavior, including boundaries and failures.
 Use deterministic fake time without sleeps and repeat changed async, time and I/O tests.
 Reserve packed-CLI E2E tests for critical journeys lower levels miss.
 
-T1 adds `.no-mistakes.yaml` with separate preparation, test and lint commands, following vectra-axi.
+`.no-mistakes.yaml` has separate preparation, test and lint commands, following vectra-axi.
 It must land on the default branch before any feature slice because no-mistakes reads trusted commands and review rules from that branch.
 The configuration targets hybrid-axi's real commands, tests, public repository and private-data review rules.
 Use affected tests plus a fixed critical CLI/safety baseline; shared infrastructure, dependencies, specs and selector changes run the full suite.
 Fail closed when test selection cannot determine the merge base or required baseline.
 Document the actual commands in README once scaffolded; do not claim nonexistent checks passed.
 Verify specification hashes, complete ledger coverage and generated declarations offline.
-Generate command reference and `skills/hybrid-axi/SKILL.md` from the catalogue and check freshness.
+The release slice will generate command reference and `skills/hybrid-axi/SKILL.md` from the catalogue and check freshness.
 Do not fetch floating specs or call the real API during validation.
 Live acceptance is separate, read-only, uses a supplied test key on an authorized host, and never submits samples or quick scans.
 

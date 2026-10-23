@@ -1,0 +1,750 @@
+{
+  "schemaVersion": 1,
+  "sources": [
+    {
+      "id": "v2",
+      "url": "https://hybrid-analysis.com/bff/api-docs/v2",
+      "documentationUrl": "https://hybrid-analysis.com/docs/api/v2",
+      "version": "2.38.0",
+      "fetchedAt": "2026-10-23",
+      "sha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operations": 53
+    },
+    {
+      "id": "labs",
+      "url": "https://hybrid-analysis.com/bff/api-docs/labs",
+      "documentationUrl": "https://hybrid-analysis.com/docs/api/labs",
+      "version": "1.0.0",
+      "fetchedAt": "2026-10-23",
+      "sha256": "792c68a6590e081e1e0687a27a78a98c9a652aa89ea954e6eeea1c0dab2a0130",
+      "operations": 9
+    }
+  ],
+  "operations": [
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "c1eed959af43228c83ebf43554f3c541",
+      "method": "GET",
+      "path": "/feed/latest",
+      "disposition": "read",
+      "plannedCommands": [
+        "feed latest"
+      ],
+      "reason": "Requested feed; deprecated, capped at 250 reports from 24h."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "90ffc0d89757c30cda41531e26c3daac",
+      "method": "GET",
+      "path": "/feed/detonation",
+      "disposition": "read",
+      "plannedCommands": [
+        "feed detonation"
+      ],
+      "reason": "Current report feed, capped at 250."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "6f846a8bc0bc73e905408f2e6da577a7",
+      "method": "GET",
+      "path": "/feed/quick-scan",
+      "disposition": "read",
+      "plannedCommands": [
+        "feed quick-scan"
+      ],
+      "reason": "Current quick-scan feed, capped at 2,500."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "5e583bcbee466842da56ec9dbe819664",
+      "method": "GET",
+      "path": "/key/current",
+      "disposition": "read",
+      "plannedCommands": [
+        "quota",
+        "doctor"
+      ],
+      "reason": "Key-level and limits only; strip returned key/user."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "a638983ab386e3f17ede1ed9644220a8",
+      "method": "GET",
+      "path": "/key/submission-quota",
+      "disposition": "read",
+      "plannedCommands": [
+        "quota",
+        "doctor"
+      ],
+      "reason": "Submission usage and limit evidence."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "9981be6445da2c7e117a48dbc551f5f6",
+      "method": "GET",
+      "path": "/overview/{sha256}",
+      "disposition": "read",
+      "plannedCommands": [
+        "hash show <sha256>"
+      ],
+      "reason": "Stable overview."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "cb21128a1fd6a0bfa882774482d1473d",
+      "method": "GET",
+      "path": "/overview/{sha256}/refresh",
+      "disposition": "blocked",
+      "plannedCommands": [],
+      "reason": "Refreshes remote external-service data; no raw-read exposure."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "052627a17af8cc6ae5240f4684040902",
+      "method": "GET",
+      "path": "/overview/{sha256}/summary",
+      "disposition": "read",
+      "plannedCommands": [
+        "hash summary <sha256>"
+      ],
+      "reason": "Compact overview."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "f0861f681445a6b6dd6f1b9964cee1b8",
+      "method": "GET",
+      "path": "/overview/{sha256}/sample",
+      "disposition": "write",
+      "plannedCommands": [
+        "hash file <sha256>"
+      ],
+      "reason": "Guarded sample bytes; protection unverified, save upstream bytes unchanged."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "04c731564495f3770c5d2e5d9971ecb2",
+      "method": "GET",
+      "path": "/quick-scan/state",
+      "disposition": "read",
+      "plannedCommands": [
+        "quick-scan scanners"
+      ],
+      "reason": "Available scanner state."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "711bd2a6c5b9f2b4c34e8af6554274e3",
+      "method": "POST",
+      "path": "/quick-scan/file",
+      "disposition": "read",
+      "plannedCommands": [
+        "quick-scan file"
+      ],
+      "reason": "Explicit read exception; sends sample, single-send."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "458f96cf9b737894c0a7bd60f6e3f183",
+      "method": "POST",
+      "path": "/quick-scan/url",
+      "disposition": "read",
+      "plannedCommands": [
+        "quick-scan url"
+      ],
+      "reason": "Explicit read exception; sends URL, single-send."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "1caeced3764dc67b0fc84b86cc9d5d74",
+      "method": "POST",
+      "path": "/quick-scan/url-to-file",
+      "disposition": "blocked",
+      "plannedCommands": [],
+      "reason": "Deprecated; use quick-scan url."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "c1764f8d9ba84c12fedb7f73915ab380",
+      "method": "POST",
+      "path": "/quick-scan/url-for-analysis",
+      "disposition": "blocked",
+      "plannedCommands": [],
+      "reason": "Deprecated; use quick-scan url."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "8b094dc6a7b763bfd4e25911ed8af72c",
+      "method": "GET",
+      "path": "/quick-scan/{id}",
+      "disposition": "read",
+      "plannedCommands": [
+        "quick-scan show <id>"
+      ],
+      "reason": "Retrieve unfinished/finished scan state."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "a73895c4bd896396a8f59a02f49cac3b",
+      "method": "POST",
+      "path": "/abuse-reports/new",
+      "disposition": "blocked",
+      "plannedCommands": [],
+      "reason": "Requests removal; outside requested mutation scope."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "d97c84ba3099decb501ba37e993ad225",
+      "method": "GET",
+      "path": "/abuse-reports/feed",
+      "disposition": "read",
+      "plannedCommands": [
+        "feed abuse"
+      ],
+      "reason": "Read qualified-removal feed with documented page selector."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "654b1757059fe1083aa8ad456fb6b8c0",
+      "method": "GET",
+      "path": "/report/{id}/certificate",
+      "disposition": "read",
+      "plannedCommands": [
+        "report file <id> --type crt"
+      ],
+      "reason": "Certificate artifact, one file."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "fe428721a2d007320558f6c1322015b7",
+      "method": "GET",
+      "path": "/report/{id}/children",
+      "disposition": "read",
+      "plannedCommands": [
+        "report children <id>"
+      ],
+      "reason": "Child report identifiers."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "610507c03f2fd279e8bf7de42eb1b78b",
+      "method": "GET",
+      "path": "/report/{id}/memory-dumps-list",
+      "disposition": "read",
+      "plannedCommands": [
+        "report memory list <id>"
+      ],
+      "reason": "Metadata only, no binary dump."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "a5ac630a36de6338b24cd231aae1b017",
+      "method": "GET",
+      "path": "/report/{id}/memory-dump/extracted-strings",
+      "disposition": "read",
+      "plannedCommands": [
+        "report memory strings <id> --filename <name>"
+      ],
+      "reason": "Selected extracted strings, not raw memory."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "39f01edd97d1aa8b83c7f339ccf58025",
+      "method": "GET",
+      "path": "/report/{id}/memory-dump/hex-dump",
+      "disposition": "read",
+      "plannedCommands": [
+        "report memory hex <id> --filename <name>"
+      ],
+      "reason": "Bounded structured JSON hex view, not binary download."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "efae3cf1c0edae0a3d48749f6897a022",
+      "method": "GET",
+      "path": "/report/{id}/pcap",
+      "disposition": "read",
+      "plannedCommands": [
+        "report file <id> --type pcap"
+      ],
+      "reason": "One network capture."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "dd971989a7f758edc5d1c9a7f5fde421",
+      "method": "GET",
+      "path": "/report/{id}/report/json",
+      "disposition": "read",
+      "plannedCommands": [
+        "report file <id> --type json"
+      ],
+      "reason": "Dedicated full JSON report route."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "c674755592ec02c64ad836ae12d6d7bf",
+      "method": "GET",
+      "path": "/report/{id}/sample",
+      "disposition": "write",
+      "plannedCommands": [
+        "report file <id> --type bin"
+      ],
+      "reason": "Guarded sample; protection unverified, save upstream bytes unchanged."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "e01f9d5e492cbc72369f56397488365b",
+      "method": "GET",
+      "path": "/report/{id}/memory-strings",
+      "disposition": "read",
+      "plannedCommands": [
+        "report file <id> --type memory-strings"
+      ],
+      "reason": "Extracted strings artifact, not raw memory."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "a9bc4ff2646b8ebd3e94b21c17f32f37",
+      "method": "GET",
+      "path": "/report/{id}/state",
+      "disposition": "read",
+      "plannedCommands": [
+        "report state <id>"
+      ],
+      "reason": "Submission state."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "b7bf5dba3bdd7e12a97034ad679b7358",
+      "method": "GET",
+      "path": "/report/{id}/summary",
+      "disposition": "read",
+      "plannedCommands": [
+        "report show <id>"
+      ],
+      "reason": "Submission summary."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "a692386204ede603328741f7b08e225a",
+      "method": "POST",
+      "path": "/report/summary",
+      "disposition": "blocked",
+      "plannedCommands": [],
+      "reason": "Deprecated bulk summary; use named report/hash reads."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "7e872c46c1a5638b701b09cc68e03565",
+      "method": "GET",
+      "path": "/report/{id}/file/{type}",
+      "disposition": "write",
+      "plannedCommands": [
+        "report file <id> --type <type>"
+      ],
+      "reason": "Mixed: bin/memory guarded writes; enumerated report formats read; unknown types blocked. Deprecated, dedicated routes preferred; protection unverified."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "db2dc105afde92f2df0d322b61143a5e",
+      "method": "GET",
+      "path": "/report/{id}/screenshots",
+      "disposition": "read",
+      "plannedCommands": [
+        "report screenshots <id>"
+      ],
+      "reason": "Bounded Base64 screenshot response."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "5d4fc0a422e9da082903f9ccf9b9bad1",
+      "method": "GET",
+      "path": "/report/{id}/dropped-file/{hash}",
+      "disposition": "blocked",
+      "plannedCommands": [],
+      "reason": "Deprecated single dropped archive; current archive alternative below."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "e718eaeb76a4ebfd4781995e894d7cec",
+      "method": "GET",
+      "path": "/report/{id}/dropped-file-raw/{hash}",
+      "disposition": "blocked",
+      "plannedCommands": [],
+      "reason": "Raw binary is outside the requested archive handling; use dropped-files-v2."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "ec44d43bdb74f2d7921a770ae549e81d",
+      "method": "GET",
+      "path": "/report/{id}/dropped-files",
+      "disposition": "blocked",
+      "plannedCommands": [],
+      "reason": "Deprecated gzip-in-ZIP bundle; use dropped-files-v2."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "62a8676fdd00f35e04945f2f0b4ad07d",
+      "method": "GET",
+      "path": "/report/{id}/dropped-files-v2",
+      "disposition": "write",
+      "plannedCommands": [
+        "report file <id> --type dropped-files"
+      ],
+      "reason": "One archive of dropped binaries; guarded, protection unverified."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "b972462c6d0d664b328b10b9e91da4c9",
+      "method": "GET",
+      "path": "/search/hash",
+      "disposition": "read",
+      "plannedCommands": [
+        "hash search --hash <hash>"
+      ],
+      "reason": "GET is current, supports MD5/SHA1/SHA256/SHA512."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "0197a6ff29eab44bf4d18d45bb67aedb",
+      "method": "POST",
+      "path": "/search/hash",
+      "disposition": "blocked",
+      "plannedCommands": [],
+      "reason": "Deprecated POST; use current GET hash search."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "2f3268b2522562c9d49936fae22ea6c7",
+      "method": "POST",
+      "path": "/search/hashes",
+      "disposition": "read",
+      "plannedCommands": [
+        "hash search --hashes-file <path>"
+      ],
+      "reason": "Requested bulk lookup; deprecated without stable bulk replacement."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "5d7230cfa76c541818188ff3911bb6a2",
+      "method": "POST",
+      "path": "/search/terms",
+      "disposition": "read",
+      "plannedCommands": [
+        "search terms"
+      ],
+      "reason": "POST query, no sample upload."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "e306d626e3fbbe3f10982ff88251b2b7",
+      "method": "POST",
+      "path": "/submit/file",
+      "disposition": "write",
+      "plannedCommands": [
+        "submit file"
+      ],
+      "reason": "Creates sandbox analysis; community-visibility preview."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "22e1723d4cec5c9b20d50715e4e5de8f",
+      "method": "POST",
+      "path": "/submit/url",
+      "disposition": "write",
+      "plannedCommands": [
+        "submit url"
+      ],
+      "reason": "Creates sandbox analysis; community-visibility preview."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "d23ebbf65a2b6ea472053d3478acdbaa",
+      "method": "POST",
+      "path": "/submit/url-to-file",
+      "disposition": "blocked",
+      "plannedCommands": [],
+      "reason": "Deprecated; use submit url."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "10980b93e5209ab3dde97d651c2fc503",
+      "method": "POST",
+      "path": "/submit/url-for-analysis",
+      "disposition": "blocked",
+      "plannedCommands": [],
+      "reason": "Deprecated; use submit url."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "e7a13bfd6ebcdc403f13efd8aa5f9bcc",
+      "method": "POST",
+      "path": "/submit/hash-for-url",
+      "disposition": "read",
+      "plannedCommands": [
+        "hash url --url <url>"
+      ],
+      "reason": "POST computes URL submission lookup hash, no sandbox submission."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "e2bce91701a469c9751d5a63da2869d9",
+      "method": "POST",
+      "path": "/submit/dropped-file",
+      "disposition": "write",
+      "plannedCommands": [
+        "submit dropped-file"
+      ],
+      "reason": "Creates sandbox analysis for exact parent/report and file hash."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "024cceff2dd2ddfad6a74251aad3b846",
+      "method": "POST",
+      "path": "/quick-scan/{id}/convert-to-full",
+      "disposition": "write",
+      "plannedCommands": [
+        "quick-scan submit <id>"
+      ],
+      "reason": "Creates sandbox analysis, outside quick-scan read exception."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "145769f29b3862d158e74b6ddda845f1",
+      "method": "GET",
+      "path": "/system/version",
+      "disposition": "read",
+      "plannedCommands": [
+        "system version"
+      ],
+      "reason": "Version information."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "bd68b15f49c59048688402da2a9d5b90",
+      "method": "GET",
+      "path": "/system/environments",
+      "disposition": "read",
+      "plannedCommands": [
+        "system environments"
+      ],
+      "reason": "Submission environment discovery."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "13ea959829e5303a7aa453d5e74c503e",
+      "method": "GET",
+      "path": "/system/action-scripts",
+      "disposition": "read",
+      "plannedCommands": [
+        "system action-scripts"
+      ],
+      "reason": "Available action-script options."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "5e878cfdb239f874742add7b9c519b41",
+      "method": "GET",
+      "path": "/system/stats",
+      "disposition": "read",
+      "plannedCommands": [
+        "system stats"
+      ],
+      "reason": "System statistics, default key level required."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "d373372cf33e493b15d9678972b68268",
+      "method": "GET",
+      "path": "/system/configuration",
+      "disposition": "read",
+      "plannedCommands": [
+        "system configuration"
+      ],
+      "reason": "Documented partial public instance configuration; redact before projection."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "04ea6a4ccdb477857ab825ca8ca8f4f5",
+      "method": "GET",
+      "path": "/system/queue-size",
+      "disposition": "read",
+      "plannedCommands": [
+        "system queue-size"
+      ],
+      "reason": "Queue size."
+    },
+    {
+      "source": "v2",
+      "sourceSha256": "3919daac7f2100666834dfa7777322c959b4d55b2db45d0871e43fc3e5bce864",
+      "operationId": "5a69498675db3f2db5cfdb50423feafb",
+      "method": "GET",
+      "path": "/system/total-submissions",
+      "disposition": "read",
+      "plannedCommands": [
+        "system total-submissions"
+      ],
+      "reason": "Submission aggregate."
+    },
+    {
+      "source": "labs",
+      "sourceSha256": "792c68a6590e081e1e0687a27a78a98c9a652aa89ea954e6eeea1c0dab2a0130",
+      "operationId": "3fa0911073aec064f0398d488f74c4f2",
+      "method": "GET",
+      "path": "/hunting/matches/recent",
+      "disposition": "write",
+      "plannedCommands": [
+        "hunting matches"
+      ],
+      "reason": "Consuming GET marks every returned match delivered; preview exact consuming scope, execute and confirm before send."
+    },
+    {
+      "source": "labs",
+      "sourceSha256": "792c68a6590e081e1e0687a27a78a98c9a652aa89ea954e6eeea1c0dab2a0130",
+      "operationId": "adc7c9ebb1c46f92f13f1a4e8dd0c9c3",
+      "method": "GET",
+      "path": "/sample/{sha256}/overview",
+      "disposition": "read",
+      "plannedCommands": [
+        "hash show <sha256> --labs"
+      ],
+      "reason": "Experimental sample overview; 425 is pending."
+    },
+    {
+      "source": "labs",
+      "sourceSha256": "792c68a6590e081e1e0687a27a78a98c9a652aa89ea954e6eeea1c0dab2a0130",
+      "operationId": "60367d88a168e925cc6be05b55565ab6",
+      "method": "POST",
+      "path": "/search/query/run",
+      "disposition": "read",
+      "plannedCommands": [
+        "search run"
+      ],
+      "reason": "Query-only POST, sync 200 or async 202; start once."
+    },
+    {
+      "source": "labs",
+      "sourceSha256": "792c68a6590e081e1e0687a27a78a98c9a652aa89ea954e6eeea1c0dab2a0130",
+      "operationId": "a385738306b200f7387851e538fe2e98",
+      "method": "GET",
+      "path": "/search/query/{id}/results",
+      "disposition": "read",
+      "plannedCommands": [
+        "search results <id>",
+        "search run"
+      ],
+      "reason": "Resume known query; bounded result retrieval."
+    },
+    {
+      "source": "labs",
+      "sourceSha256": "792c68a6590e081e1e0687a27a78a98c9a652aa89ea954e6eeea1c0dab2a0130",
+      "operationId": "0d965c4fe9b7806ced772d0b6b61b1b5",
+      "method": "GET",
+      "path": "/hunting/yara-rules",
+      "disposition": "read",
+      "plannedCommands": [
+        "hunting yara list"
+      ],
+      "reason": "Own rule list with documented filters."
+    },
+    {
+      "source": "labs",
+      "sourceSha256": "792c68a6590e081e1e0687a27a78a98c9a652aa89ea954e6eeea1c0dab2a0130",
+      "operationId": "7dcab7838cd6eeea81243d256b05ecc2",
+      "method": "POST",
+      "path": "/hunting/yara-rules",
+      "disposition": "write",
+      "plannedCommands": [
+        "hunting yara create"
+      ],
+      "reason": "Creates rule with exact identifier/payload confirmation."
+    },
+    {
+      "source": "labs",
+      "sourceSha256": "792c68a6590e081e1e0687a27a78a98c9a652aa89ea954e6eeea1c0dab2a0130",
+      "operationId": "d8d8833e20421f7c1175ca126646ba7b",
+      "method": "GET",
+      "path": "/hunting/yara-rules/{id}",
+      "disposition": "read",
+      "plannedCommands": [
+        "hunting yara show <id>"
+      ],
+      "reason": "Own rule detail."
+    },
+    {
+      "source": "labs",
+      "sourceSha256": "792c68a6590e081e1e0687a27a78a98c9a652aa89ea954e6eeea1c0dab2a0130",
+      "operationId": "39bc2cb8ea5bab2edd9eb9fa161b819a",
+      "method": "POST",
+      "path": "/hunting/yara-rules/{id}",
+      "disposition": "write",
+      "plannedCommands": [
+        "hunting yara update <id>"
+      ],
+      "reason": "Partial POST update; reset_counter is an explicit previewed effect."
+    },
+    {
+      "source": "labs",
+      "sourceSha256": "792c68a6590e081e1e0687a27a78a98c9a652aa89ea954e6eeea1c0dab2a0130",
+      "operationId": "63fb1846ad545a0551d782694673cb22",
+      "method": "DELETE",
+      "path": "/hunting/yara-rules/{id}",
+      "disposition": "write",
+      "plannedCommands": [
+        "hunting yara delete <id>"
+      ],
+      "reason": "Deletes exact own rule; 204 has no JSON body."
+    }
+  ]
+}
