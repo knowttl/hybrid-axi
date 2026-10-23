@@ -64,6 +64,34 @@ test.each([
   expect(result.requests[0]).toMatchObject({ method: "GET", url: `/api/v2${path}` });
 });
 
+test.each([
+  { named: ["report", "memory", "list", "job"], path: "/report/job/memory-dumps-list", body: [{ filename: "dump.bin", address: "0x100", flags: "rw", file_process_pid: "7" }] },
+  { named: ["report", "memory", "list", "job"], path: "/report/job/memory-dumps-list", body: [{ filename: "dump.bin", address: "0x100", flags: "rw", file_process_pid: 1.5 }] },
+  { named: ["feed", "detonation"], path: "/feed/detonation", body: [{ report_id: "job", sha256: null, verdict_human: 5 }] },
+  { named: ["feed", "quick-scan"], path: "/feed/quick-scan", body: [{ quick_scan_id: "scan", sha256: null, verdict_human: 1 }] },
+  { named: ["system", "stats"], path: "/system/stats", body: { total_submissions: 20, total_samples: 10, behaviour_indicators: "unknown" } },
+  { named: ["system", "stats"], path: "/system/stats", body: { total_submissions: 20, total_samples: 10, total_yara_rules: "unknown" } },
+  { named: ["system", "stats"], path: "/system/stats", body: { total_submissions: 20, total_samples: 10, behaviour_indicators: null } },
+  { named: ["system", "stats"], path: "/system/stats", body: { total_submissions: 20, total_samples: 10, total_yara_rules: null } },
+  { named: ["system", "stats"], path: "/system/stats", body: { total_submissions: 20, total_samples: 10, behaviour_indicators: 1.5 } },
+  { named: ["system", "stats"], path: "/system/stats", body: { total_submissions: 20, total_samples: 10, total_yara_rules: 1.5 } },
+].flatMap(({ named, path, body }) => [{ argv: named, body }, { argv: ["api", "get", path], body }]))("default output rejects mistyped optional fields: $argv $body", async ({ argv, body }) => {
+  const result = await cli(argv, [{ body }]);
+  expect(result.code).toBe(1);
+  expect(result.output).toMatchObject({ error: { code: "MALFORMED_RESPONSE" } });
+});
+
+test.each([
+  { named: ["report", "memory", "list", "job"], path: "/report/job/memory-dumps-list", body: [{ filename: "dump.bin", address: "0x100", flags: "rw", file_process_pid: null }], expected: { results: [{ file_process_pid: null }] } },
+  { named: ["feed", "detonation"], path: "/feed/detonation", body: [{ report_id: "job", sha256: null, verdict_human: "malicious" }, { report_id: "other", sha256: null, verdict_human: null }], expected: { results: [{ verdict_human: "malicious" }, { verdict_human: null }] } },
+  { named: ["feed", "quick-scan"], path: "/feed/quick-scan", body: [{ quick_scan_id: "scan", sha256: null, verdict_human: "clean" }, { quick_scan_id: "other", sha256: null, verdict_human: null }], expected: { results: [{ verdict_human: "clean" }, { verdict_human: null }] } },
+  { named: ["system", "stats"], path: "/system/stats", body: { total_submissions: 20, total_samples: 10, behaviour_indicators: 0, total_yara_rules: 3 }, expected: { result: { behaviour_indicators: 0, total_yara_rules: 3 } } },
+].flatMap(({ named, path, body, expected }) => [{ argv: named, body, expected }, { argv: ["api", "get", path], body, expected }]))("default output accepts documented optional field types: $argv", async ({ argv, body, expected }) => {
+  const result = await cli(argv, [{ body }]);
+  expect(result.code).toBe(0);
+  expect(result.output).toMatchObject(expected);
+});
+
 test("abuse feed uses only the page selector and generates its own continuation", async () => {
   const result = await cli(["feed", "abuse", "--page", "2"], [{ body: { number_of_results: 4, number_of_pages: 3, link_to_next_page: "https://untrusted.invalid/?api-key=secret", falcon_mal_query_results: [{ sha256: "a".repeat(64), deleted_at: null }] } }]);
   expect(result.output).toMatchObject({ count: 1, total: 4, complete: false, continuation: { page: 3 }, help: ["Run hybrid-axi feed abuse --page 3"] });
