@@ -64,7 +64,8 @@ export function parseHunting(argv: string[]) {
   if (["yaraCreate", "yaraUpdate"].includes(entry.operation)) {
     if (!flags["--body-file"]) usage("--body-file is required");
     const parsed = (entry.operation === "yaraCreate" ? yaraCreate : yaraUpdate).safeParse(bodyFile(flags["--body-file"]!));
-    if (!parsed.success) usage("Invalid YARA body; use the operation's documented JSON fields");
+    if (!parsed.success) usage(parsed.error.issues.find((issue) => issue.path[0] === "identifier" && issue.code === "too_big")?.message
+      ?? "Invalid YARA body; use the operation's documented JSON fields");
     body = entry.operation === "yaraCreate" ? parsed.data! : { id: positional[0], body: parsed.data };
   } else if (entry.operation === "yaraDelete") body = { id: positional[0] };
   else if (entry.operation === "huntingMatches") {

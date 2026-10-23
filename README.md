@@ -245,6 +245,7 @@ Compact rule fields are `id`, `identifier` and `active`; selected text previews 
 `hunting yara create --body-file <path>` requires a strict JSON object with `identifier`, `threat_categories` and YARA source in `rule`; unknown request fields are rejected.
 Optional fields are `active` and integer `daily_notifications_limit`.
 `hunting yara update <id> --body-file <path>` sends a partial POST containing only supplied fields, and accepts explicit `reset_counter:true` to reset the all-time matches counter.
+For create and update, a supplied `identifier` is trimmed and must contain 1-25 characters; longer identifiers fail locally with `VALIDATION_ERROR` before preview or any HTTP request.
 `--body-file -` reads JSON from stdin, bounded to 1 MiB like regular body files.
 `hunting yara delete <id>` deletes the exact rule and accepts an empty 204 success.
 Every change previews first and requires enabled write scope, `--execute` and the exact preview confirmation, binding the profile, target and complete request digest.

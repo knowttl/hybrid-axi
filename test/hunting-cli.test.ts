@@ -123,6 +123,37 @@ test("create previews without HTTP then sends the exact confirmed JSON once", as
     expect(readFileSync(join(directory, "state/hybrid-axi/writes.log"), "utf8")).not.toContain(createBody.rule);
   });
 });
+test.each([
+  { verb: "create", args: createArgs, replies: [{ body: rule }], methods: ["POST"] },
+  { verb: "update", args: updateArgs, replies: [{ body: rule }, { body: rule }, { body: rule }, { body: rule }], methods: ["GET", "GET", "GET", "POST"] },
+])("$verb accepts a 25-character identifier through confirmed execution", async ({ args, replies, methods }) => {
+  const body = { ...createBody, identifier: "a".repeat(25) };
+  writeFileSync(bodyFile, JSON.stringify(body));
+  await withFake(replies, async (fake) => {
+    const preview = await invoke(args(), fake.fetch);
+    expect(preview.code).toBe(0);
+    expect(preview.output).toMatchObject({ kind: "dry-run", preview: { proposed: { body } } });
+    const result = await invoke([...args(), "--execute", "--confirm", confirmation(preview)], fake.fetch);
+    expect(result.code).toBe(0);
+    expect(fake.requests.map((request) => request.method)).toEqual(methods);
+    expect(JSON.parse(fake.requests.at(-1)!.body)).toEqual(body);
+  });
+});
+test.each([
+  { verb: "create", args: createArgs, flags: [] },
+  { verb: "create", args: createArgs, flags: ["--execute", "--confirm", "unused"] },
+  { verb: "update", args: updateArgs, flags: [] },
+  { verb: "update", args: updateArgs, flags: ["--execute", "--confirm", "unused"] },
+])("$verb refuses a 26-character identifier before preview or send with $flags", async ({ args, flags }) => {
+  writeFileSync(bodyFile, JSON.stringify({ ...createBody, identifier: "a".repeat(26) }));
+  await withFake([], async (fake) => {
+    const result = await invoke([...args(), ...flags], fake.fetch);
+    expect(result.code).toBe(2);
+    expect(result.output).toMatchObject({ code: "VALIDATION_ERROR", error: expect.stringContaining("identifier must be at most 25 characters") });
+    expect(result.output).not.toHaveProperty("preview");
+    expect(fake.requests).toHaveLength(0);
+  });
+});
 test("partial update previews reset and posts only supplied fields", async () => {
   const body = { reset_counter: true, active: false };
   writeFileSync(bodyFile, JSON.stringify(body));
