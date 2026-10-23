@@ -30,6 +30,11 @@ export const catalogue = {
   },
 } as const;
 
+export function suggestion(command: keyof typeof catalogue, config?: string, profile?: string): string {
+  const quote = (value: string) => `'${value.replaceAll("'", process.platform === "win32" ? "''" : "'\"'\"'")}'`;
+  return `Run hybrid-axi ${command}${config === undefined ? "" : ` --config ${quote(config)}`}${profile === undefined ? "" : ` --profile ${quote(profile)}`}`;
+}
+
 export function help() {
   return {
     description: DESCRIPTION,

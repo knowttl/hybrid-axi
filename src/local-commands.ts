@@ -1,7 +1,7 @@
 import { homedir } from "node:os";
 import { resolve, sep } from "node:path";
 import { AxiError } from "axi-sdk-js";
-import { catalogue, DESCRIPTION, help } from "./catalogue.js";
+import { catalogue, DESCRIPTION, help, suggestion } from "./catalogue.js";
 import { credentialStore, ORIGIN } from "./profiles.js";
 
 export function localCommand(argv: string[], store: ReturnType<typeof credentialStore>): Record<string, unknown> {
@@ -25,18 +25,20 @@ export function localCommand(argv: string[], store: ReturnType<typeof credential
   if (!Object.hasOwn(catalogue, command)) usage();
   if (flags["--help"]) return words.length === 0 ? help() : { command, ...catalogue[command as keyof typeof catalogue] };
   if (command === "config path") return { config: store.configPath(flags["--config"]), state: store.statePath() };
-  if (command === "profile list") return { ...store.list(flags["--config"]), help: ["Run hybrid-axi auth status --profile <name>"] };
+  if (command === "profile list") return { ...store.list(flags["--config"]), help: [flags["--profile"] === undefined
+    ? `${suggestion("auth status", flags["--config"])} --profile <name>`
+    : suggestion("auth status", flags["--config"], flags["--profile"])] };
   if (command === "auth status") return store.status(flags["--config"], flags["--profile"]);
   if (command === "setup") return {
     config: store.configPath(flags["--config"]),
     template: { version: 1, defaultProfile: "example", profiles: { example: { origin: ORIGIN, apiKey: { env: "HYBRID_AXI_API_KEY" }, writes: { allowWrites: false, operations: [] } } } },
     help: ["Set HYBRID_AXI_API_KEY in the environment, or use an absolute private-file apiKey SecretRef",
-      "Save the template at the config path with current-user ownership and private permissions", "Run hybrid-axi auth status"],
+      "Save the template at the config path with current-user ownership and private permissions", suggestion("auth status", flags["--config"], flags["--profile"])],
   };
   store.readOnly();
   const loaded = store.load(flags["--config"]);
   let profile;
-  try { profile = store.select(loaded.config, flags["--profile"]); } catch (error) {
+  try { profile = store.select(loaded.config, flags["--profile"], flags["--config"]); } catch (error) {
     if (!(error instanceof AxiError) || error.code !== "PROFILE_REQUIRED") throw error;
   }
   const binary = resolve(process.argv[1] ?? "bin/hybrid-axi.js");
@@ -45,5 +47,5 @@ export function localCommand(argv: string[], store: ReturnType<typeof credential
     description: DESCRIPTION, profile: profile?.name ?? "none", origin: profile?.origin ?? ORIGIN,
     readOnly: profile ? store.effectiveReadOnly(profile) : true, setup: profile ? "configured" : "required",
     status: "Local configuration only; API operations are not implemented",
-    help: [profile ? "Run hybrid-axi auth status" : "Run hybrid-axi setup", "Run hybrid-axi --help"] };
+    help: [suggestion(profile ? "auth status" : "setup", flags["--config"], flags["--profile"]), "Run hybrid-axi --help"] };
 }

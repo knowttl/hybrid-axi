@@ -4,6 +4,7 @@ import { homedir } from "node:os";
 import { isAbsolute, join, resolve, win32 } from "node:path";
 import { privateFiles, toolDirectory, type PrivateFileOptions } from "./private-file.js";
 import { SecretRedactor } from "./redact.js";
+import { suggestion } from "./catalogue.js";
 
 export const ORIGIN = "https://hybrid-analysis.com";
 const profileName = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/);
@@ -48,10 +49,10 @@ export function credentialStore(options: CredentialContext = {}, redactor = new 
     if (value === "1" || value === "true") return true;
     return invalid("HYBRID_AXI_READ_ONLY must be 1, true, 0 or false");
   }
-  function load(explicit?: string, verifyAcl = false) {
+  function load(explicit?: string) {
     const path = configPath(explicit);
     let raw: unknown;
-    try { raw = JSON.parse(files.read(path, false, verifyAcl)); } catch (error) {
+    try { raw = JSON.parse(files.read(path)); } catch (error) {
       if (error instanceof AxiError) throw error;
       if (explicit === undefined && env.HYBRID_AXI_CONFIG === undefined && (error as NodeJS.ErrnoException).code === "ENOENT") {
         return { path, config: { version: 1 as const, profiles: {} as Record<string, Profile>, defaultProfile: undefined as string | undefined } };
@@ -71,7 +72,7 @@ export function credentialStore(options: CredentialContext = {}, redactor = new 
     if (!parsed.success) return invalid("Invalid configuration: check profile names, defaultProfile, unknown fields and apiKey env/file SecretRefs");
     return { path, config: parsed.data };
   }
-  function select(config: ReturnType<typeof load>["config"], flag?: string): SelectedProfile {
+  function select(config: ReturnType<typeof load>["config"], flag?: string, explicit?: string): SelectedProfile {
     const selected = flag ?? env.HYBRID_AXI_PROFILE;
     if (selected !== undefined && !profileName.safeParse(selected).success) invalid("Invalid selected profile name");
     if (selected === undefined && ["HYBRID_AXI_API_KEY", "HYBRID_AXI_ORIGIN"].some((name) => env[name] !== undefined)) {
@@ -85,13 +86,13 @@ export function credentialStore(options: CredentialContext = {}, redactor = new 
     const name = selected ?? config.defaultProfile ?? (names.length === 1 ? names[0] : undefined);
     if (name === undefined) throw new AxiError(names.length ? "Select one of the configured profiles" : "No profiles are configured",
       names.length ? "PROFILE_AMBIGUOUS" : "PROFILE_REQUIRED", ["Pass --profile <name>, set HYBRID_AXI_PROFILE, or configure defaultProfile; run hybrid-axi setup"]);
-    if (!Object.hasOwn(config.profiles, name)) throw new AxiError("Selected profile is not configured", "PROFILE_NOT_FOUND", ["Run hybrid-axi profile list"]);
+    if (!Object.hasOwn(config.profiles, name)) throw new AxiError("Selected profile is not configured", "PROFILE_NOT_FOUND", [suggestion("profile list", explicit)]);
     return { ...config.profiles[name]!, name, source: flag !== undefined ? "flag" : env.HYBRID_AXI_PROFILE !== undefined ? "env" : config.defaultProfile !== undefined ? "config-default" : "sole" };
   }
-  function credentials(profile: SelectedProfile, verifyAcl = false): { apiKey: string } {
+  function credentials(profile: SelectedProfile): { apiKey: string } {
     const ref = profile.apiKey;
     let value: string | undefined;
-    try { value = "env" in ref ? env[ref.env] : files.read(ref.file, true, verifyAcl).replace(/^\uFEFF/, "").trimEnd(); } catch (error) {
+    try { value = "env" in ref ? env[ref.env] : files.read(ref.file, true).replace(/^\uFEFF/, "").trimEnd(); } catch (error) {
       if (error instanceof AxiError) throw error;
       throw new AxiError("Cannot read apiKey SecretRef file", "AUTH_REQUIRED", ["Check the SecretRef file exists and is readable"]);
     }
@@ -105,9 +106,9 @@ export function credentialStore(options: CredentialContext = {}, redactor = new 
   }
   function status(explicit?: string, flag?: string) {
     readOnly();
-    const loaded = load(explicit, true);
-    const profile = select(loaded.config, flag);
-    credentials(profile, true);
+    const loaded = load(explicit);
+    const profile = select(loaded.config, flag, explicit);
+    credentials(profile);
     return { profile: profile.name, source: "env" in profile.apiKey ? "env" : "file", available: true,
       origin: profile.origin, apiKey: profile.apiKey, config: loaded.path, readOnly: effectiveReadOnly(profile) };
   }

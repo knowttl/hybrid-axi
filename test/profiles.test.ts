@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, expect, test } from "vitest";
 import { credentialStore, ORIGIN } from "../src/profiles.js";
+import { localCommand } from "../src/local-commands.js";
 
 let directory: string;
 beforeEach(() => { directory = mkdtempSync(join(tmpdir(), "hybrid-profiles-")); });
@@ -109,4 +110,29 @@ test("auth status rejects permissive SecretRef files", () => {
   chmodSync(key, 0o644);
   const path = config({ example: { apiKey: { file: key } } });
   expect(() => credentialStore({ env: {} }).status(path)).toThrowError(expect.objectContaining({ code: "CONFIG_INSECURE" }));
+});
+
+test.each(["home", "setup", "profile list"])("%s follow-up retains explicit config and profile selectors", (command) => {
+  const path = config({ staging: {} }, undefined, "custom config.json");
+  const store = credentialStore({ env: {} });
+  const result = localCommand([...command.split(" "), "--config", path, "--profile", "staging"], store);
+  expect(result.help).toContain(`Run hybrid-axi auth status --config '${path}' --profile 'staging'`);
+});
+
+test("profile list keeps the config selector when suggesting a profile placeholder", () => {
+  const path = config({ staging: {} });
+  const result = localCommand(["profile", "list", "--config", path], credentialStore({ env: {} }));
+  expect(result.help).toEqual([`Run hybrid-axi auth status --config '${path}' --profile <name>`]);
+});
+
+test.each(["home", "auth status"])("%s missing-profile recovery lists the selected config", (command) => {
+  const path = config({ staging: {} });
+  expect(() => localCommand([...command.split(" "), "--config", path, "--profile", "absent"], credentialStore({ env: {} })))
+    .toThrowError(expect.objectContaining({ code: "PROFILE_NOT_FOUND", suggestions: [`Run hybrid-axi profile list --config '${path}'`] }));
+});
+
+test("unconfigured home retains the config selector in setup guidance", () => {
+  const path = config({});
+  const result = localCommand(["home", "--config", path], credentialStore({ env: {} }));
+  expect(result.help).toContain(`Run hybrid-axi setup --config '${path}'`);
 });

@@ -45,8 +45,8 @@ export function privateFiles(options: PrivateFileOptions = {}) {
       try { acl(path, verifyAcl ? "verify" : "check", false); } catch { insecure(path); }
     }
   }
-  function read(path: string, secret = false, verifyAcl = false): string {
-    check(path, secret, verifyAcl);
+  function read(path: string, secret = false): string {
+    check(path, secret, true);
     const fd = openSync(path, constants.O_RDONLY | (platform === "win32" ? 0 : constants.O_NOFOLLOW));
     try { validate(fstatSync(fd), path, secret); return readFileSync(fd, "utf8"); } finally { closeSync(fd); }
   }

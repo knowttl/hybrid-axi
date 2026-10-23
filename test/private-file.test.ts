@@ -70,11 +70,11 @@ test.each(["linux", "win32"] as const)("%s refuses symlinks and nonregular files
   expect(() => files.read(directory)).toThrowError(expect.objectContaining({ code: "CONFIG_INSECURE" }));
 });
 
-test("Windows auth protection checks refuse an unprotected DACL", () => {
+test.each([false, true])("Windows reads refuse an unprotected DACL (secret: %s)", (secret) => {
   const path = join(directory, "secret");
   writeFileSync(path, "synthetic-private");
   const acl: WindowsAcl = (_path, action) => { if (action === "verify") throw new Error("Unprotected DACL"); };
-  expect(() => privateFiles({ platform: "win32", acl }).read(path, true, true))
+  expect(() => privateFiles({ platform: "win32", acl }).read(path, secret))
     .toThrowError(expect.objectContaining({ code: "CONFIG_INSECURE" }));
 });
 
@@ -104,7 +104,7 @@ test("Windows writes apply protected ACLs before content and retry transient pub
     protectedPaths.add(destination.toString());
   }, wait: (ms) => { waits.push(ms); } });
   files.write(path, "synthetic-complete");
-  expect(files.read(path, true, true)).toBe("synthetic-complete");
+  expect(files.read(path, true)).toBe("synthetic-complete");
   expect(protectedPaths.has(dirname(path))).toBe(true);
   expect(waits).toEqual([25, 50]);
   expect(readdirSync(dirname(path))).toEqual(["config.json"]);
