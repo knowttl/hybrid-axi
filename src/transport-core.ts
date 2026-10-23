@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import { multipartBody } from "./uploads.js";
 
 export const HYBRID_ORIGIN = "https://hybrid-analysis.com";
 export type Credential = Readonly<{ apiKey: string; redact: (value: unknown) => unknown }>;
@@ -9,7 +10,7 @@ export type OperationBinding = Readonly<{
   decoder: z.ZodType;
   query?: z.ZodType<Record<string, string | number | boolean | undefined>>;
   body?: z.ZodType;
-  bodyEncoding?: "form";
+  bodyEncoding?: "form" | "multipart";
   retrySafe?: boolean;
   download?: boolean;
   requiredKeyLevel?: string;
@@ -149,6 +150,9 @@ export function constructTransport(options: { credential: Credential; origin?: s
         { ...identity, url, ...(body !== undefined ? { body } : {}) })) {
         fail("WRITE_DENIED", "This operation requires guarded write authorization", operation);
       }
+      // Identity remains canonical JSON for the write coordinator. Only the sink
+      // loads and verifies the content-addressed upload before encoding the wire body.
+      const wireBody = reviewed.bodyEncoding === "multipart" && body !== undefined ? multipartBody(JSON.parse(body) as Record<string, unknown>) : body;
       for (let attempt = 0; ; attempt++) {
         const remaining = deadline - now();
         if (remaining <= 0) fail("DEADLINE_EXCEEDED", "Invocation deadline exceeded; no request sent", operation);
@@ -164,8 +168,8 @@ export function constructTransport(options: { credential: Credential; origin?: s
           const response = await dependencies.fetch(url, {
             method: reviewed.method, headers: { "api-key": apiKey, "user-agent": "hybrid-axi", accept: reviewed.download ? "*/*" : "application/json",
               ...(reviewed.download ? { "accept-encoding": "identity" } : {}),
-              ...(body !== undefined ? { "content-type": reviewed.bodyEncoding === "form" ? "application/x-www-form-urlencoded" : "application/json" } : {}) },
-            ...(body !== undefined ? { body } : {}), redirect: "error", signal: controller.signal,
+              ...(body !== undefined && reviewed.bodyEncoding !== "multipart" ? { "content-type": reviewed.bodyEncoding === "form" ? "application/x-www-form-urlencoded" : "application/json" } : {}) },
+            ...(wireBody !== undefined ? { body: wireBody } : {}), redirect: "error", signal: controller.signal,
           });
           rateLimits = {};
           for (const name of ["Api-Limits", "Submission-Limits", "Quick-Scan-Limits", "Sample-Download-Limits"]) {

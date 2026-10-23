@@ -76,21 +76,23 @@ test.each([
 ])("packed CLI rejects unsupported input without echoing values: %j", (...args) => {
   const result = cli(...args);
   expect(result.status).toBe(2);
-  expect(decode(result.stdout)).toMatchObject({ code: "VALIDATION_ERROR", help: expect.arrayContaining([expect.stringContaining("Valid commands")]) });
+  expect(decode(result.stdout)).toMatchObject({ code: "VALIDATION_ERROR", help: expect.arrayContaining([expect.stringMatching(/Valid (commands|flags)/)]) });
   expect(result.stdout).not.toContain("synthetic-secret-never-print");
   expect(result.stderr).toBe("");
 });
 
-test("packed inventory enables only reviewed reads and guarded downloads", async () => {
+test("packed inventory enables only reviewed operations", async () => {
   const { pathToFileURL } = await import("node:url");
   const { transportBindings } = await import(pathToFileURL(join(packageRoot, "dist/src/catalogue.js")).href);
   expect(Object.keys(transportBindings).sort()).toEqual([
-    "feed abuse", "feed detonation", "feed latest", "feed quick-scan",
+    "convertQuickScan", "feed abuse", "feed detonation", "feed latest", "feed quick-scan",
     "hash-download-bin", "hashOverview", "hashSearch", "hashesSearch", "key.current", "key.submission-quota", "labsOverview", "queryResults", "queryRun",
+    "quickScanFile", "quickScanShow", "quickScanState", "quickScanUrl",
     "report artifact crt", "report artifact html", "report artifact json", "report artifact maec", "report artifact memory-strings",
     "report artifact misp", "report artifact misp-json", "report artifact openioc", "report artifact pcap", "report artifact pdf", "report artifact stix", "report artifact xml",
     "report children", "report memory hex", "report memory list", "report memory strings", "report screenshots", "report show", "report state",
     "report-download-bin", "report-download-dropped-files", "report-download-memory",
+    "submitDroppedFile", "submitFile", "submitUrl",
     "system action-scripts", "system configuration", "system environments", "system queue-size", "system stats", "system total-submissions", "system version", "termsSearch",
   ]);
   const inventory = JSON.parse(readFileSync(join(packageRoot, "inventory/capabilities.json"), "utf8"));

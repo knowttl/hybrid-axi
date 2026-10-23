@@ -40,7 +40,7 @@ export class SecretRedactor {
       // /key/current must never expose these, including through --full or --fields.
       .filter(([key]) => !/^(?:api[_-]?key|user)$/i.test(key))
       .map(([key, child]) => [this.text(key),
-        /^(?:password|secret|access[_-]?key|secret[_-]?key|client[_-]?secret|token|access[_-]?token|refresh[_-]?token|authorization|cookie|set-cookie|private[_-]?key|accountkey|sas[_-]?token)$/i.test(key) ? REDACTED : this.payload(child)]));
+        /^(?:password|document[_-]?password|secret|access[_-]?key|secret[_-]?key|client[_-]?secret|token|access[_-]?token|refresh[_-]?token|authorization|cookie|set-cookie|private[_-]?key|accountkey|sas[_-]?token)$/i.test(key) ? REDACTED : this.payload(child)]));
     return value;
   }
 }

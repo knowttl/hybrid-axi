@@ -2,7 +2,7 @@
 
 Agent-ergonomic CLI for the Hybrid Analysis API, read-only by default, with compact TOON output and explicitly guarded submissions, YARA changes and malware downloads.
 
-This repository ships local credential commands, bounded `doctor` and `quota` reads, hash overviews and searches, experimental Labs queries, report reads and artifacts, guarded malware downloads, feeds, system discovery and reviewed raw reads.
+This repository ships local credential commands, bounded `doctor` and `quota` reads, hash overviews and searches, experimental Labs queries, report reads and normal artifacts, guarded malware downloads, feeds, system discovery, reviewed raw reads, guarded sandbox submissions and quick scans.
 No npm release is available yet.
 The [design](docs/design.md) defines the planned command surface, complete stable/Labs operation ledger, credentials, safety boundaries, specification deviations and ordered implementation slices.
 The tool-specific no-mistakes configuration establishes offline validation before feature work.
@@ -83,15 +83,45 @@ Labs response envelopes remain array-shaped under `searches`, with result rows u
 
 ## Shared write guards
 
-Guarded downloads use the shared coordinator; submission and YARA commands remain planned.
+Guarded downloads and submissions use the shared coordinator; YARA commands remain planned.
 Enable only the needed operation names in a file profile's `writes.operations` and set `writes.allowWrites` to `true`.
 The download names are `hash-download-bin`, `report-download-bin`, `report-download-dropped-files` and `report-download-memory`.
+The submission names are `submitFile`, `submitUrl`, `submitDroppedFile` and `convertQuickScan`.
 Environment profiles cannot enable writes, and forced read-only overrides file allowances.
 Run the download without `--execute` to preview the exact profile, ID, type, destination and confirmation string without an HTTP request.
 Then repeat it with `--execute --confirm '<exact preview confirmation>'` to send once after the private journal reserves the intent.
 `--dry-run` explicitly selects preview and cannot accompany `--execute`.
 Never replay an ambiguous outcome; inspect the journal and exact destination first.
 See [guarded writes and artifact handling](docs/design.md#guarded-writes-and-artifact-handling) for the coordinator's policy, confirmation, journal and recovery contracts.
+
+## Submissions and quick scans
+
+`submit file --file <path> --environment-id <id>` and `submit url --url <url> --environment-id <id>` preview a sandbox submission locally.
+The sample and its report can become visible to the community.
+File confirmation binds the SHA256, byte count, filename, selected environment and complete request digest; file bytes are verified again before sending.
+Uploads accept regular files up to 250 MiB.
+URL confirmation binds the exact HTTP(S) URL and environment; embedded URL credentials are refused.
+The documented environments are `100`, `110`, `120`, `140`, `160`, `200`, `330` and `430`.
+Optional documented analysis settings are explicit flags; no anti-evasion or deprecated network flags are enabled implicitly.
+Run command help for the available settings.
+
+`submit dropped-file --id <report-id> --file-hash <sha256>` previews analysis of the exact dropped file from that source report.
+That API accepts no environment override.
+`quick-scan submit <id> --environment-id <id>` previews conversion of a known quick scan to a sandbox analysis.
+Each guarded command sends only with `--execute --confirm '<exact-preview-confirmation>'` under an enabled profile.
+`--dry-run` explicitly selects preview and cannot be combined with `--execute`.
+An optional `--intent-id <id>` prevents a reserved intent from being sent again across invocations.
+Journal failure blocks sending; ambiguous outcomes include an audit ID and reconciliation guidance and are never automatically replayed.
+Use a returned job ID with `report state <id>` to inspect analysis progress.
+
+`quick-scan file --file <path> --scan-type <type>` sends the sample to Hybrid Analysis.
+`quick-scan url --url <url> --scan-type <type>` sends the URL to Hybrid Analysis.
+Both are explicit read exceptions with no write gate, including under read-only policy, and require a documented scan type from their help.
+They send once without automatic replay, even after a timeout or explicit retryable HTTP failure.
+`quick-scan show <id>` reads a known scan's `id`, `finished` and `sha256` without another upload.
+`quick-scan scanners` reads the documented scanner service availability and supported types.
+Quick-scan reads support `--fields` and `--full` after sensitive-field redaction.
+No live submission or quick scan is part of automated verification.
 
 ## Reports, feeds and reviewed raw reads
 

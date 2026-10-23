@@ -4,16 +4,18 @@ import { searchBindings, searchCatalogue } from "./search-catalogue.js";
 import type { MutationOperation } from "./writes-core.js";
 import { reportBindings, reportCatalogue } from "./report-catalogue.js";
 import { downloadBindings, downloadOperations } from "./download-catalogue.js";
+import { submissionBindings, submissionCatalogue, submissionMutations } from "./submission-catalogue.js";
 
 export const DESCRIPTION = "Agent-friendly CLI for Hybrid Analysis, under construction";
 
-export const mutationOperations: Readonly<Record<string, MutationOperation>> = Object.freeze({ ...downloadOperations });
+export const mutationOperations: Readonly<Record<string, MutationOperation>> = Object.freeze({ ...downloadOperations, ...submissionMutations });
 
 // Planned inventory entries never authorize execution. Feature slices bind reviewed operations here.
 export const transportBindings: Readonly<Record<string, OperationBinding>> = Object.freeze({
   ...searchBindings,
   ...reportBindings,
   ...downloadBindings,
+  ...submissionBindings,
   "key.current": Object.freeze({ method: "GET", path: "/api/v2/key/current", effect: "read", decoder: keyDecoder,
     requiredKeyLevel: "restricted" }),
   "key.submission-quota": Object.freeze({ method: "GET", path: "/api/v2/key/submission-quota", effect: "read", decoder: quotaDecoder,
@@ -22,6 +24,7 @@ export const transportBindings: Readonly<Record<string, OperationBinding>> = Obj
 export const catalogue = {
   ...searchCatalogue,
   ...reportCatalogue,
+  ...submissionCatalogue,
   home: {
     description: "Show local profile and policy without contacting Hybrid Analysis",
     flags: { "--help": "Show help; default false", "--config": "Config path; default HYBRID_AXI_CONFIG or platform config", "--profile": "Profile name; default HYBRID_AXI_PROFILE or profile precedence" },
