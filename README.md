@@ -118,8 +118,10 @@ Setup prints guidance without writing files or installing agent hooks.
 Set `HYBRID_AXI_API_KEY` in the environment, or reference a private UTF-8 file with `"apiKey":{"file":"<absolute-path>"}` in a named profile.
 Keys are never accepted in arguments, stored by the tool or sent by these local commands.
 `hybrid-axi auth status` verifies availability and file protections without printing the key or contacting the API.
-Auth status reports only the secret source kind (`env` or `file`), never the env var name, the secret file path or the config path.
+Auth status reports only the secret source kind (`env` or `file`).
+Home and auth status omit environment variable names, secret file paths and config paths from success, error and help output.
 Home reports only the binary name, never its absolute path.
+Their follow-up commands replace an explicit config path with `<path>`; substitute your selected config path before running them.
 `hybrid-axi profile list` lists configured profiles; `hybrid-axi config path` shows configuration and state locations.
 Every command supports `--help`; profile commands also accept `--config <path>` and `--profile <name>`.
 
