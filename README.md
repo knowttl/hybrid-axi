@@ -83,10 +83,11 @@ Labs response envelopes remain array-shaped under `searches`, with result rows u
 
 ## Shared write guards
 
-Guarded downloads and submissions use the shared coordinator; YARA commands remain planned.
+Guarded downloads, submissions, YARA changes and consuming hunting matches use the shared coordinator.
 Enable only the needed operation names in a file profile's `writes.operations` and set `writes.allowWrites` to `true`.
 The download names are `hash-download-bin`, `report-download-bin`, `report-download-dropped-files` and `report-download-memory`.
 The submission names are `submitFile`, `submitUrl`, `submitDroppedFile` and `convertQuickScan`.
+The hunting names are `yaraCreate`, `yaraUpdate`, `yaraDelete` and `huntingMatches`.
 Environment profiles cannot enable writes, and forced read-only overrides file allowances.
 Run the download without `--execute` to preview the exact profile, ID, type, destination and confirmation string without an HTTP request.
 Then repeat it with `--execute --confirm '<exact preview confirmation>'` to send once after the private journal reserves the intent.
@@ -125,6 +126,26 @@ They send once without automatic replay, even after a timeout or explicit retrya
 `quick-scan scanners` reads the documented scanner service availability and supported types.
 Quick-scan reads support `--fields` and `--full` after sensitive-field redaction.
 No live submission or quick scan is part of automated verification.
+
+## Experimental hunting
+
+`hunting yara list` reads own rules, with optional `--search`, comma-separated `--threat-category` and `--status active|paused` filters.
+`hunting yara show <id>` reads one own rule.
+All hunting commands are experimental Labs contracts; unknown response fields remain available with `--fields` or `--full` after redaction.
+Compact rule fields are `id`, `identifier` and `active`; selected text previews stop at 1,000 characters unless `--full` is supplied.
+`hunting yara create --body-file <path>` requires a JSON object with `identifier`, `threat_categories` and YARA source in `rule`.
+Optional fields are `active` and integer `daily_notifications_limit`.
+`hunting yara update <id> --body-file <path>` sends a partial POST containing only supplied fields, and accepts explicit `reset_counter:true` to reset the all-time matches counter.
+`--body-file -` reads JSON from stdin, bounded to 1 MiB like regular body files.
+`hunting yara delete <id>` deletes the exact rule and accepts an empty 204 success.
+Every change previews first and requires enabled write scope, `--execute` and the exact preview confirmation, binding the profile, target and complete request digest.
+
+`hunting matches` is a guarded consuming GET, with `--items-count` default 100 (range 1-1000) and optional RFC3339 `--search-after`.
+Its preview names the current user's undelivered-match scope without sending a request.
+Execution returns the oldest matching undelivered entries and marks every returned match delivered, so it cannot be retrieved again through this endpoint.
+Compact fields are `id`, `rule_id`, `sample_sha256` and `match_date`.
+Consumption is never automatically retried; an ambiguous outcome requires journal reconciliation, not replay.
+An optional `--intent-id` reserves a durable intent against duplicate execution for all hunting writes.
 
 ## Reports, feeds and reviewed raw reads
 

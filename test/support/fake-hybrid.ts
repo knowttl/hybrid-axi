@@ -61,7 +61,8 @@ export async function fakeHttpsHybrid(replies: Reply[]) {
         for (const [name, value] of Object.entries(response.headers)) {
           if (value !== undefined) headers.set(name, Array.isArray(value) ? value.join(", ") : value);
         }
-        resolve(new Response(Readable.toWeb(response) as ReadableStream<Uint8Array>, { status: response.statusCode!, headers }));
+        if (response.statusCode === 204) response.resume();
+        resolve(new Response(response.statusCode === 204 ? null : Readable.toWeb(response) as ReadableStream<Uint8Array>, { status: response.statusCode!, headers }));
       });
       pending.once("error", reject);
       pending.end(body);

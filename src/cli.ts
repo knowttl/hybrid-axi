@@ -11,6 +11,7 @@ import { parseReport, reportCommand } from "./reports.js";
 import { createWriteCoordinator } from "./writes.js";
 import { saveArtifact } from "./report-file.js";
 import { parseSubmission, quickScanCommand } from "./submissions.js";
+import { huntingRead, huntingView, parseHunting } from "./hunting.js";
 
 export async function main(argv = process.argv.slice(2), options: {
   credentials?: CredentialContext;
@@ -38,6 +39,29 @@ export async function main(argv = process.argv.slice(2), options: {
     }),
     commands: {
       scaffold: async () => {
+        const hunting = parseHunting(argv);
+        if (hunting) {
+          selectors = { config: hunting.flags["--config"], profile: hunting.flags["--profile"] };
+          if (hunting.help) return hunting.help;
+          if (hunting.entry.effect === "write") {
+            const coordinator = (options.createWriteCoordinator ?? createWriteCoordinator)(selectors, options.credentials);
+            const result = await coordinator.run(hunting.entry.operation, hunting.body, {
+              execute: Boolean(hunting.flags["--execute"]), dryRun: Boolean(hunting.flags["--dry-run"]),
+              confirm: hunting.flags["--confirm"], intentId: hunting.flags["--intent-id"],
+            });
+            if (result.kind !== "success") return { experimental: true, ...result };
+            const view = huntingView(result.response, hunting.flags, hunting.entry.operation === "huntingMatches");
+            return { experimental: true, ...result, response: view.value,
+              ...(Array.isArray(view.value) ? { count: view.value.length, ...(view.value.length ? {} : { message: "0 undelivered matches returned" }) } : {}),
+              help: [...result.help, ...(view.guidance.help ?? [])] };
+          }
+          store.readOnly();
+          const loaded = store.load(selectors.config);
+          const profile = store.select(loaded.config, selectors.profile, selectors.config);
+          const credential = store.credentials(profile);
+          const transport = (options.createTransport ?? createTransport)({ ...credential, redact: (value) => store.redactor.payload(value) });
+          return store.redactor.payload(await huntingRead(hunting, transport)) as Record<string, unknown>;
+        }
         const submission = parseSubmission(argv);
         if (submission) {
           selectors = { config: submission.flags["--config"], profile: submission.flags["--profile"] };
