@@ -335,40 +335,8 @@ Blocked rows identify replacements or explain exclusions; they do not silently a
 
 ## Deviations from the prompt
 
-These are specification findings, not observed live-API behavior.
-No live behavior was probed in this design slice.
-
-1. Stable hash lookup is now `GET /search/hash`; POST hash lookup is deprecated, as are bulk `/search/hashes` and `/report/summary`.
-2. Labs `search run` can return synchronous 200 results or asynchronous 202 query IDs; it is not invariably an async two-request exchange.
-   Its schemas wrap results/IDs in arrays, and async status is `query_status`; preserve the pinned shape rather than inventing a job envelope.
-3. Labs recent hunting matches are consuming GETs: returned matches are marked delivered and will not be returned again.
-   No non-consuming matches-list alternative appears in the snapshot; this command is a guarded write by explicit decision.
-4. Overview refresh is a GET that fetches fresh external-service data; it is blocked rather than exposed as a raw read.
-5. Sample downloads declare `application/gzip`; generic binary downloads describe gzip and memory describes ZIP.
-   The specs do not promise password protection, contrary to the parenthetical expectation in the original download answer; the confirmed decision below allows guarded downloads unchanged with a warning.
-6. `/report/{id}/file/{type}` is deprecated and mixes ordinary report formats with `bin` and `memory`; memory has no dedicated binary replacement in the spec.
-   Dropped-file legacy routes are deprecated, a current raw route exists, and `/dropped-files-v2` provides an archive; the raw route stays blocked under the archive-first requirement.
-7. `feed latest` is deprecated; `/feed/detonation` and `/feed/quick-scan` provide current feed alternatives with different caps (250 versus 2,500).
-8. Deprecated URL-to-file and URL-for-analysis submission variants remain unavailable.
-   Quick-scan-to-full and dropped-file submissions create sandbox analyses and require write policy.
-9. `/submit/hash-for-url` computes a lookup hash using POST and is a read; HTTP verbs do not determine policy.
-10. Labs overview documents 425 for analysis in progress; neither overview contract defines a definitive no-analysis error shape.
-    Denial and malformed data cannot be interpreted as empty; read-only acceptance must establish missing-analysis fixtures before release.
-11. The key-level vocabulary is restricted/default/elevated/super, and `/key/current` includes the secret `api_key` plus user information that must be stripped.
-    Download auth levels are usually in `x-auth-level`, while newer operations sometimes omit that annotation; absence is not permission evidence.
-12. Quota is conveyed substantially through JSON-valued `Api-Limits`, `Submission-Limits`, `Quick-Scan-Limits` and `Sample-Download-Limits` headers, not a uniform standard rate-limit header set.
-    Some submit responses spell `Submission-Limits"` with a trailing quote.
-13. The stable changelog says all `/file-collection/*` routes return 410 from 2026-08-21; there are no such operations in these pinned paths.
-    Do not recreate them from historical notes.
-14. YARA update is POST, not PUT/PATCH; it updates supplied fields only and also exposes `reset_counter`.
-    A reset must be explicit in payload and preview; deletion returns 204 without a JSON body.
-15. The later request adds actual artium-axi integration after publication, replacing the original note-only exclusion; T13 is a separate host-repository PR.
-16. The CLI projects the documented `SubmissionQuota` per-key `apikey` blocks as `keyQuota` before sensitive-field redaction.
-    This preserves quota values while keeping the credential-field scrubber intact.
-17. Compact feed output follows the individual schemas rather than inventing common verdict or timestamp values.
-    The [report catalogue](../src/report-catalogue.ts) owns the executable field selections and decoders.
-18. Report summary documents HTTP 410 with `SampleGone` for container files.
-    Keep it distinct from a successful summary and direct callers to the children read; do not interpret it as a missing analysis.
+The release [README deviation list](../README.md#deviations-from-the-prompt) owns all 18 findings, including their implementation consequences.
+They are specification findings rather than observed live-API behavior; no live behavior was probed during design or automated verification.
 
 ## Confirmed safety decisions
 
