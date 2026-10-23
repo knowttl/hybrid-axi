@@ -149,6 +149,7 @@ export async function searchCommand(parsed: NonNullable<ReturnType<typeof parseS
     }
   }
   const results = decode(queryResult, response.body);
+  id ??= results.length === 1 ? results[0]!.id : undefined;
   const pending = results.some((row) => row.results === undefined || /^(pending|queued|running|processing)$/i.test(row.query_status));
   return { experimental, ...(id ? { id } : {}), ...(start && flags["--full"] ? { start } : {}),
     searches: results.map((row) => ({ ...select(row, ["number_of_results", "number_of_pages", "query_status"]),

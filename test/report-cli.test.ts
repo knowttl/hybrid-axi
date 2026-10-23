@@ -100,6 +100,14 @@ test("abuse feed uses only the page selector and generates its own continuation"
   expect(result.stdout).not.toContain("untrusted");
 });
 
+test("abuse feed decodes observed results and preserves pagination", async () => {
+  const rows = [{ sha256: "b".repeat(64), deleted_at: "2026-01-01" }];
+  const result = await cli(["feed", "abuse"], [{ body: { results: rows, number_of_results: 4, number_of_pages: 2,
+    link_to_previous_page: null, link_to_next_page: "https://example.invalid/page/2" } }]);
+  expect(result.code).toBe(0);
+  expect(result.output).toMatchObject({ results: rows, count: 1, total: 4, complete: false, continuation: { page: 2 } });
+});
+
 test.each([
   { body: [], expected: { count: 0, total: 0, available: 0, complete: true, results: [], message: "0 results for report children" } },
   { body: ["first", "second", "third"], expected: { count: 2, total: 3, available: 3, complete: false, results: ["first", "second"], help: ["Run hybrid-axi report children 'job' --limit 3"] } },
