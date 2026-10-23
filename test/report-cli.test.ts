@@ -236,6 +236,25 @@ test("an interrupted artifact response publishes no partial file and is never re
   expect(result.requests).toHaveLength(1);
 });
 
+test.each([
+  { path: "report/job/summary", body: summary, expected: { result: summary }, url: "/api/v2/report/job/summary" },
+  { path: "report/job/memory-dump/extracted-strings?filename=dump%20one.bin", body: { data: ["one"] }, expected: { count: 1, results: ["one"] }, url: "/api/v2/report/job/memory-dump/extracted-strings?filename=dump+one.bin" },
+  { path: "system/version", body: { sandbox: "1", api: "2" }, expected: { result: { sandbox: "1", api: "2" } }, url: "/api/v2/system/version" },
+])("slash-less reviewed api get is normalized before validation: $path", async ({ path, body, expected, url }) => {
+  const result = await cli(["api", "get", path], [{ body }]);
+  expect(result.code).toBe(0);
+  expect(result.output).toMatchObject(expected);
+  expect(result.requests).toHaveLength(1);
+  expect(result.requests[0]).toMatchObject({ method: "GET", url });
+});
+
+test("slash-less reviewed raw Labs overview uses the experimental binding", async () => {
+  const sha = "a".repeat(64);
+  const result = await cli(["api", "get", `sample/${sha}/overview`, "--labs", "--fields", "future"], [{ body: { sha256: sha, report_ids: { sandbox_job_ids: ["job"] }, future: "new" } }]);
+  expect(result.output).toEqual({ experimental: true, overview: { future: "new" } });
+  expect(result.requests[0]).toMatchObject({ url: `/api/labs/sample/${sha}/overview` });
+});
+
 test("prototype-named query parameters cannot disappear during raw validation", async () => {
   const result = await cli(["api", "get", "/system/version?__proto__=ignored"], [], { noCredentials: true });
   expect(result.code).toBe(2);
@@ -258,6 +277,7 @@ test.each([
   ["report", "file", "job", "--type", "json"], ["report", "file", "job", "--type", "json", "--output", "-"],
   ["feed", "latest", "--limit", "0"], ["feed", "latest", "--page", "2"], ["system", "version", "--full", "--fields", "api"],
   ...["https://untrusted.invalid/system/version", "//system/version", "/report/job/file/json", "/report/job/file/bin", "/report/job/sample", "/report/job/memory-strings", "/report/job/pcap", "/report/job/dropped-files-v2", "/report/job/dropped-file-raw/hash", "/overview/hash/refresh", "/system/../version", "/system/%76ersion", "/system/version?api-key=x", "/system/version?page=1", "/report/job/memory-dump/hex-dump", "/report/job/memory-dump/hex-dump?filename=a&filename=b", "/report/job/memory-dump/hex-dump?filename=%zz", "/unknown"].map((path) => ["api", "get", path]),
+  ...["https://untrusted.invalid/system/version", "report/job/file/json", "report/job/file/bin", "report/job/sample", "report/job/memory-strings", "report/job/pcap", "report/job/dropped-files-v2", "report/job/dropped-file-raw/hash", "overview/hash/refresh", "system/../version", "../system/version", "./system/version", "system/./version", "system//version", "system/%76ersion", "system\\version", "system/version#fragment", "system/version?api-key=x", "system/version?page=1", "report/job/memory-dump/hex-dump", "report/job/memory-dump/hex-dump?filename=a&filename=b", "report/job/memory-dump/hex-dump?filename=%zz", "unknown"].map((path) => ["api", "get", path]),
   ["api", "get", "/hunting/matches/recent", "--labs"], ["api", "get", "/system/version", "--headers", "x"],
 ])("invalid or sensitive input fails before credential resolution: %j", async (...argv) => {
   const result = await cli(argv, [], { noCredentials: true });
