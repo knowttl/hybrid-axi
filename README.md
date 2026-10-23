@@ -99,6 +99,7 @@ Container summary responses with HTTP 410 remain errors and point to `report chi
 `report file <id> --type <type> --output <new-file>` downloads exactly one artifact to an existing directory.
 The destination must be new, with no symlink path components; completed bytes are published atomically without overwriting concurrent files.
 Files are private, bounded to 250 MiB, and saved unchanged without unpacking or executing them.
+Downloads request identity HTTP content encoding and reject any other declared encoding to preserve upstream artifact bytes.
 Types `crt`, `pcap`, `json` and `memory-strings` use dedicated routes.
 Types `xml`, `html`, `pdf`, `maec`, `stix`, `misp`, `misp-json` and `openioc` use the deprecated generic route and disclose that fact in output.
 Samples, dropped archives, process memory and unknown types are refused.
@@ -108,7 +109,8 @@ Samples, dropped archives, process memory and unknown types are refused.
 `feed abuse --page <n>` reads one documented page and generates page guidance without following upstream URLs.
 `system version`, `environments`, `action-scripts`, `stats`, `configuration`, `queue-size` and `total-submissions` expose their reviewed read operations.
 
-Report, feed and system reads support `--fields` for extra fields and `--full` for all fields and untruncated text after redaction.
+Report, feed and system reads support `--fields <comma-separated-names>` to replace the compact field selection, or `--full` for all fields and untruncated text after redaction.
+These flags are mutually exclusive.
 Text previews are 1,000 characters; nested detail arrays preview 100 entries and disclose their original size.
 Collections have a separate local `--limit` default of 100, including under `--full`, and report returned count, available rows, known upstream total, completeness and continuation separately.
 Feed totals remain unknown unless the response supplies one; current feeds describe only their capped recent window.

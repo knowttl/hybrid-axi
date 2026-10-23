@@ -170,7 +170,8 @@ Raw reads cannot change credentials, origin, headers or budgets.
 Submission commands use the exact documented environment ID and options; never silently enable deprecated anti-evasion/network flags.
 
 Keep JSON internally and encode [TOON](https://toonformat.dev/reference/spec.html) at stdout.
-Use 3-4 useful fields for normal lists, `--fields` for explicit extra fields and `--full` for untruncated details.
+Use 3-4 useful fields for normal lists.
+See README's [hash and search](../README.md#hash-and-search) and [report, feed and system](../README.md#reports-feeds-and-reviewed-raw-reads) contracts for field selection and detail controls.
 Preview long text at 1,000 characters, include original length and offer `--full` only when truncation occurs.
 Lists expose returned count, upstream total when known, completeness and continuation separately from TOON array headers.
 Unknown totals stay unknown; truncation always has a command or selector to see more.
