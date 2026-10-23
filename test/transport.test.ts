@@ -3,10 +3,12 @@ import { afterEach, expect, test, vi } from "vitest";
 import { constructTransport, type Credential, type OperationBinding } from "../src/transport-core.js";
 import { transportBindings } from "../src/catalogue.js";
 import { createSession } from "../src/session.js";
+import { SecretRedactor } from "../src/redact.js";
 import { fakeHttpsHybrid, fakeTransport, keyBody, quotaBody, syntheticKey } from "./support/fake-hybrid.js";
 
-const credential: Credential = { apiKey: syntheticKey, redact: (value) =>
-  JSON.parse(JSON.stringify(value).replaceAll(syntheticKey, "[REDACTED]").replaceAll(encodeURIComponent(syntheticKey), "[REDACTED]")) };
+const redactor = new SecretRedactor();
+redactor.add(syntheticKey);
+const credential: Credential = { apiKey: syntheticKey, redact: (value) => redactor.payload(value) };
 const sample: OperationBinding = { method: "GET", path: "/api/v2/report/{id}/sample", effect: "write",
   download: true, requiredKeyLevel: "default", decoder: z.instanceof(Uint8Array) };
 const bindings = { ...transportBindings, sample };
@@ -22,7 +24,10 @@ test("quota decodes documented usage and observed limit headers over verified HT
   try {
     const session = createSession(constructTransport({ credential }, { bindings: transportBindings, fetch: fake.fetch }));
     const result = await session.quota();
-    expect(result).toMatchObject({ keyLevel: "restricted", quota: quotaBody, rateLimits: {
+    expect(result).toMatchObject({ keyLevel: "restricted", quota: {
+      detonation: { keyQuota: { quota: { day: 100 }, used: { day: 3 }, available: { day: 97 } }, quota_reached: false },
+      quick_scan: { keyQuota: null, quota_reached: false },
+    }, rateLimits: {
       key: { "Api-Limits": { value: { remaining: 5 } }, "Submission-Limits": { value: { day: 100 } },
         "Quick-Scan-Limits": { value: { day: 50 } }, "Sample-Download-Limits": { value: { day: 10 } } },
       quota: { "Api-Limits": { value: { remaining: 4 } } },
@@ -99,7 +104,7 @@ test("disconnects do not expose dependency errors or replay requests", async () 
   expect(fake.requests).toHaveLength(1);
 });
 
-test.each(["", "<html>failure</html>", "{", "{}", '{"auth_level_name":42}'])("invalid success body fails rather than becoming empty: %s", async (text) => {
+test.each(["", "<html>failure</html>", "{", "{}", '{"auth_level_name":42}', '{"auth_level_name":""}'])("invalid success body fails rather than becoming empty: %s", async (text) => {
   const fake = fakeTransport([{ text }], { credential });
   await expect(fake.transport.request("key.current")).rejects.toMatchObject({ error: { code: "MALFORMED_RESPONSE" } });
 });
@@ -107,6 +112,11 @@ test.each(["", "<html>failure</html>", "{", "{}", '{"auth_level_name":42}'])("in
 test("quota failure never returns a zero quota", async () => {
   const fake = fakeTransport([{ body: keyBody }, { body: {} }], { credential });
   await expect(createSession(fake.transport).quota()).rejects.toMatchObject({ error: { code: "MALFORMED_RESPONSE" } });
+});
+
+test("new quota fields remain available after sensitive-field redaction", async () => {
+  const fake = fakeTransport([{ body: keyBody }, { body: { ...quotaBody, pending: 1, password: "synthetic-password" } }], { credential });
+  expect(await createSession(fake.transport).quota()).toMatchObject({ quota: { pending: 1, password: "***redacted***" } });
 });
 
 test("malformed headers are explicit without hiding valid submission headers", async () => {
@@ -121,7 +131,7 @@ test("documented upstream messages and headers scrub synthetic raw and encoded k
     { status: 400, body: { message: `${syntheticKey} ${encodeURIComponent(syntheticKey)}` } },
     { body: keyBody, headers: { "Api-Limits": JSON.stringify({ message: syntheticKey }) } },
   ], { credential });
-  await expect(fake.transport.request("key.current")).rejects.toMatchObject({ error: { message: "[REDACTED] [REDACTED]" } });
+  await expect(fake.transport.request("key.current")).rejects.toMatchObject({ error: { message: "***redacted*** ***redacted***" } });
   const result = await fake.transport.request("key.current");
   expect(JSON.stringify(result)).not.toContain(syntheticKey);
   expect(result.body).toEqual({ auth_level_name: "restricted" });

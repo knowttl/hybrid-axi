@@ -345,6 +345,8 @@ No live behavior was probed in this design slice.
 14. YARA update is POST, not PUT/PATCH; it updates supplied fields only and also exposes `reset_counter`.
     A reset must be explicit in payload and preview; deletion returns 204 without a JSON body.
 15. The later request adds actual artium-axi integration after publication, replacing the original note-only exclusion; T13 is a separate host-repository PR.
+16. The CLI projects the documented `SubmissionQuota` per-key `apikey` blocks as `keyQuota` before sensitive-field redaction.
+    This preserves quota values while keeping the credential-field scrubber intact.
 
 ## Confirmed safety decisions
 

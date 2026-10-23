@@ -4,7 +4,7 @@ import { AxiError } from "axi-sdk-js";
 import { catalogue, DESCRIPTION, help, suggestion } from "./catalogue.js";
 import { credentialStore, ORIGIN } from "./profiles.js";
 
-export function localCommand(argv: string[], store: ReturnType<typeof credentialStore>): Record<string, unknown> {
+export function commandInput(argv: string[]) {
   const usage = (): never => { throw new AxiError("Unknown command, argument, or flag", "VALIDATION_ERROR", [
     `Valid commands: ${Object.keys(catalogue).join(", ")}; valid flags: --config, --profile, --help`, "Run hybrid-axi --help",
   ]); };
@@ -23,7 +23,12 @@ export function localCommand(argv: string[], store: ReturnType<typeof credential
   }
   const command = words.join(" ") || "home";
   if (!Object.hasOwn(catalogue, command)) usage();
-  if (flags["--help"]) return words.length === 0 ? help() : { command, ...catalogue[command as keyof typeof catalogue] };
+  return { command: command as keyof typeof catalogue, flags, topLevel: words.length === 0 };
+}
+
+export function localCommand(argv: string[], store: ReturnType<typeof credentialStore>): Record<string, unknown> {
+  const { command, flags, topLevel } = commandInput(argv);
+  if (flags["--help"]) return topLevel ? help() : { command, ...catalogue[command] };
   if (command === "config path") return { config: store.configPath(flags["--config"]), state: store.statePath() };
   if (command === "profile list") return { ...store.list(flags["--config"]), help: [flags["--profile"] === undefined
     ? `${suggestion("auth status", flags["--config"])} --profile <name>`
@@ -46,6 +51,6 @@ export function localCommand(argv: string[], store: ReturnType<typeof credential
   return { bin: binary.startsWith(`${home}${sep}`) ? `~${binary.slice(home.length)}` : binary,
     description: DESCRIPTION, profile: profile?.name ?? "none", origin: profile?.origin ?? ORIGIN,
     readOnly: profile ? store.effectiveReadOnly(profile) : true, setup: profile ? "configured" : "required",
-    status: "Local configuration only; API operations are not implemented",
+    status: "Local configuration; doctor and quota are available for explicit API checks",
     help: [suggestion(profile ? "auth status" : "setup", flags["--config"], flags["--profile"]), "Run hybrid-axi --help"] };
 }

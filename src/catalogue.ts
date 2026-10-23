@@ -36,6 +36,16 @@ export const catalogue = {
     flags: { "--help": "Show help; default false", "--config": "Config path; default HYBRID_AXI_CONFIG or platform config", "--profile": "Profile selector; template uses example" },
     examples: ["hybrid-axi setup", "hybrid-axi setup --config <path>"],
   },
+  doctor: {
+    description: "Verify credentials and read key level, submission quota and observed limit headers; other access is unverified",
+    flags: { "--help": "Show help; default false", "--config": "Config path; default HYBRID_AXI_CONFIG or platform config", "--profile": "Profile name; default profile precedence" },
+    examples: ["hybrid-axi doctor", "hybrid-axi doctor --profile example"],
+  },
+  quota: {
+    description: "Read key level, submission quota and observed limit headers with two bounded requests and no retries",
+    flags: { "--help": "Show help; default false", "--config": "Config path; default HYBRID_AXI_CONFIG or platform config", "--profile": "Profile name; default profile precedence" },
+    examples: ["hybrid-axi quota", "hybrid-axi quota --profile example"],
+  },
 } as const;
 
 export function suggestion(command: keyof typeof catalogue, config?: string, profile?: string): string {

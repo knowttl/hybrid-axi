@@ -105,6 +105,22 @@ test("packed local setup, help and paths work without credentials or network", (
   expect(result.stderr).toBe("");
 });
 
+test.each(["doctor", "quota"])("packed %s help is available without credentials or HTTP", (command) => {
+  const result = cli(command, "--help");
+  expect(result.status).toBe(0);
+  expect(decode(result.stdout)).toMatchObject({ command, flags: { "--profile": expect.any(String), "--config": expect.any(String) } });
+  expect(result.stderr).toBe("");
+});
+
+test("packed quota cannot reach a real upstream with a synthetic environment key", () => {
+  const result = spawnSync(process.execPath, [entry, "quota"], { cwd: directory, encoding: "utf8",
+    env: { ...process.env, HYBRID_AXI_API_KEY: "synthetic-packed-network-key" } });
+  expect(result.status).toBe(1);
+  expect(decode(result.stdout)).toMatchObject({ error: { code: "NETWORK_ERROR", operation: "key.current" } });
+  expect(result.stdout + result.stderr).not.toContain("synthetic-packed-network-key");
+  expect(result.stderr).toBe("");
+});
+
 test("packed auth status resolves a synthetic private file and never prints its value", () => {
   const key = join(directory, "synthetic-key");
   const config = join(directory, "synthetic-config.json");
