@@ -1,28 +1,29 @@
-import { homedir } from "node:os";
-import { resolve, sep } from "node:path";
+import { encode } from "@toon-format/toon";
 import { AxiError, runAxiCli } from "axi-sdk-js";
 import { DESCRIPTION, help } from "./catalogue.js";
+import { credentialStore, type CredentialContext } from "./profiles.js";
+import { localCommand } from "./local-commands.js";
 
-export async function main(argv = process.argv.slice(2)): Promise<void> {
+export async function main(argv = process.argv.slice(2), options: {
+  credentials?: CredentialContext;
+  stdout?: { write: (chunk: string) => unknown };
+} = {}): Promise<void> {
+  const store = credentialStore(options.credentials);
   await runAxiCli({
     description: DESCRIPTION,
     argv: ["scaffold"],
     topLevelHelp: "",
     home: async () => help(),
+    stdout: { write: (chunk) => (options.stdout ?? process.stdout).write(store.redactor.text(chunk)) },
+    formatError: (error) => ({
+      output: `${encode(store.redactor.value(error instanceof AxiError
+        ? { error: error.message, code: error.code, help: error.suggestions }
+        : { error: "Local command could not complete", code: "CONFIG_INVALID" }))}\n`,
+      exitCode: error instanceof AxiError && error.code === "VALIDATION_ERROR" ? 2 : 1,
+    }),
     commands: {
       scaffold: async () => {
-        if (argv.length === 1 && argv[0] === "--help"
-          || argv.length === 2 && argv[0] === "home" && argv[1] === "--help") return help();
-        if (argv.length === 0 || argv.length === 1 && argv[0] === "home") {
-          const binary = resolve(process.argv[1] ?? "bin/hybrid-axi.js");
-          const home = homedir();
-          return { bin: binary.startsWith(`${home}${sep}`) ? `~${binary.slice(home.length)}` : binary,
-            description: DESCRIPTION, status: "Scaffold only; API operations are not implemented",
-            help: ["Run hybrid-axi --help"] };
-        }
-        // Do not echo untrusted argv: it can contain accidentally supplied credentials.
-        throw new AxiError("Unknown command, argument, or flag", "VALIDATION_ERROR",
-          ["Valid commands: home; valid flags: --help", "Run hybrid-axi --help"]);
+        return store.redactor.value(localCommand(argv, store)) as Record<string, unknown>;
       },
     },
   });

@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { cpSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync } from "node:fs";
+import { cpSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { performance } from "node:perf_hooks";
@@ -52,18 +52,20 @@ test("packed version aliases work without the command graph", () => {
   } finally { renameSync(`${graph}.hidden`, graph); }
 });
 
-test.each([["--help"], ["home", "--help"]])("packed help lists only executable scaffold commands: %j", (...args) => {
+test("packed help lists executable local commands", () => {
+  const args = ["--help"];
   const result = cli(...args);
   expect(result.status, result.stderr).toBe(0);
-  expect(decode(result.stdout)).toMatchObject({ commands: { home: "Show scaffold status without contacting Hybrid Analysis" } });
+  expect(decode(result.stdout)).toMatchObject({ commands: { home: "Show local profile and policy without contacting Hybrid Analysis",
+    "auth status": "Verify local SecretRef availability and file protections without HTTP" } });
   expect(result.stderr).toBe("");
 });
 
-test.each([[], ["home"]])("packed home reports scaffold status offline: %j", (...args) => {
+test.each([[], ["home"]])("packed home reports local setup state offline: %j", (...args) => {
   const result = cli(...args);
   expect(result.status, result.stderr).toBe(0);
   expect(decode(result.stdout)).toMatchObject({ bin: expect.stringContaining("hybrid-axi.js"),
-    status: "Scaffold only; API operations are not implemented", help: ["Run hybrid-axi --help"] });
+    setup: "required", readOnly: true, help: ["Run hybrid-axi setup", "Run hybrid-axi --help"] });
   expect(result.stderr).toBe("");
 });
 
@@ -85,6 +87,60 @@ test("packed inventory remains non-executable evidence", async () => {
   expect(transportBindings).toEqual({});
   const inventory = JSON.parse(readFileSync(join(packageRoot, "inventory/capabilities.json"), "utf8"));
   expect(inventory.operations).toHaveLength(62);
+  const schema = JSON.parse(readFileSync(join(packageRoot, "axi-credential.schema.json"), "utf8"));
+  expect(schema).toMatchObject({ additionalProperties: false, properties: {
+    origin: { const: "https://hybrid-analysis.com" },
+    apiKey: { "x-secret": true, default: { env: "HYBRID_AXI_API_KEY" } },
+  } });
+});
+
+test("packed local setup, help and paths work without credentials or network", () => {
+  expect(decode(cli("setup").stdout)).toMatchObject({ template: { version: 1, profiles: { example: {
+    apiKey: { env: "HYBRID_AXI_API_KEY" }, writes: { allowWrites: false, operations: [] },
+  } } } });
+  expect(decode(cli("config", "path").stdout)).toMatchObject({ config: expect.stringContaining("hybrid-axi/config.json"), state: expect.stringContaining("hybrid-axi") });
+  const result = cli("auth", "status", "--config", join(directory, "missing"), "--help");
+  expect(result.status).toBe(0);
+  expect(decode(result.stdout)).toMatchObject({ command: "auth status" });
+  expect(result.stderr).toBe("");
+});
+
+test("packed auth status resolves a synthetic private file and never prints its value", () => {
+  const key = join(directory, "synthetic-key");
+  const config = join(directory, "synthetic-config.json");
+  writeFileSync(key, "\uFEFFsynthetic-packed-file-key\r\n", { mode: 0o600 });
+  writeFileSync(config, JSON.stringify({ version: 1, profiles: { example: { apiKey: { file: key } } } }), { mode: 0o600 });
+  const result = cli("auth", "status", "--config", config);
+  expect(result.status).toBe(0);
+  expect(decode(result.stdout)).toMatchObject({ profile: "example", source: "file", available: true, readOnly: true });
+  expect(result.stdout).not.toContain("synthetic-packed-file-key");
+  expect(result.stderr).toBe("");
+});
+
+test.each(["--api-key", "--key", "--header", "--token"])("packed CLI refuses credential argv %s before reading configuration", (flag) => {
+  const result = cli("auth", "status", "--config", join(directory, "missing"), flag, "synthetic-argv-key");
+  expect(result.status).toBe(2);
+  expect(decode(result.stdout)).toMatchObject({ code: "VALIDATION_ERROR" });
+  expect(result.stdout).not.toContain("synthetic-argv-key");
+  expect(result.stderr).toBe("");
+});
+
+test("packed stdout and error channels scrub raw, escaped and encoded environment keys", () => {
+  const secret = 'synthetic/"packed\\key?';
+  const forms = [secret, JSON.stringify(secret).slice(1, -1), encodeURIComponent(secret)];
+  const result = spawnSync(process.execPath, [entry, "config", "path", "--config", join(directory, forms.join("-"))], {
+    cwd: directory, encoding: "utf8", env: { ...process.env, HYBRID_AXI_API_KEY: secret },
+  });
+  expect(result.status).toBe(0);
+  expect(decode(result.stdout)).toMatchObject({ config: expect.stringContaining("***redacted***") });
+  for (const form of forms) expect(result.stdout + result.stderr).not.toContain(form);
+  const invalid = spawnSync(process.execPath, [entry, "auth", "status"], {
+    cwd: directory, encoding: "utf8", env: { ...process.env, HYBRID_AXI_API_KEY: "synthetic\r\ninvalid-key" },
+  });
+  expect(invalid.status).toBe(1);
+  expect(decode(invalid.stdout)).toMatchObject({ code: "CONFIG_INVALID" });
+  expect(invalid.stdout + invalid.stderr).not.toContain("synthetic");
+  expect(invalid.stderr).toBe("");
 });
 
 test("version startup stays close to the same-machine Node floor", () => {
