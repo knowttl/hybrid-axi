@@ -359,6 +359,11 @@ No live behavior was probed in this design slice.
 15. The later request adds actual artium-axi integration after publication, replacing the original note-only exclusion; T13 is a separate host-repository PR.
 16. The CLI projects the documented `SubmissionQuota` per-key `apikey` blocks as `keyQuota` before sensitive-field redaction.
     This preserves quota values while keeping the credential-field scrubber intact.
+17. The latest feed exposes `job_id`, `threat_score` and `analysis_start_time`; it has no documented verdict field.
+    Current detonation and quick-scan feeds expose numeric `verdict` and `verdict_human` but no timestamp.
+    Compact output follows those individual schemas rather than inventing common verdict or timestamp values.
+18. Report summary documents HTTP 410 with `SampleGone` for container files.
+    Keep it distinct from a successful summary and direct callers to the children read; do not interpret it as a missing analysis.
 
 ## Confirmed safety decisions
 

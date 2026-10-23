@@ -184,6 +184,10 @@ export function constructTransport(options: { credential: Credential; origin?: s
             await response.body?.cancel();
             fail("REDIRECT_BLOCKED", "Upstream redirect refused", operation, { status: response.status });
           }
+          if (reviewed.download && response.ok && Number(response.headers.get("content-length")) > 250 * 1024 * 1024 - downloadBytes) {
+            await response.body?.cancel();
+            fail("LIMIT_EXCEEDED", "Invocation response byte limit exceeded", operation);
+          }
           const raw = await readBody(response, operation, Boolean(reviewed.download && response.ok));
           const header = response.headers.get("retry-after");
           let retryAfter: number | undefined;

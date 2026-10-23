@@ -2,7 +2,7 @@
 
 Agent-ergonomic CLI for the Hybrid Analysis API, read-only by default, with compact TOON output and explicitly guarded submissions, YARA changes and malware downloads.
 
-This repository ships local credential commands, bounded `doctor` and `quota` reads, hash overviews and searches, named term filters, and experimental Labs queries.
+This repository ships local credential commands, bounded `doctor` and `quota` reads, hash overviews and searches, experimental Labs queries, report reads and normal artifacts, feeds, system discovery and reviewed raw reads.
 No npm release is available yet.
 The [design](docs/design.md) defines the planned command surface, complete stable/Labs operation ledger, credentials, safety boundaries, specification deviations and ordered implementation slices.
 The tool-specific no-mistakes configuration establishes offline validation before feature work.
@@ -48,7 +48,7 @@ The documented `apikey` quota block appears as `keyQuota` so it remains distingu
 Transport errors use a structured `error` object with code, operation and any known status, key level or retry interval.
 When a response was received, `error.rateLimits` preserves its allowlisted header observations, including on 429 and other failures.
 Download denials distinguish an inspected restricted key from an unknown key level and explain the account-vetting requirement.
-Download commands themselves remain unavailable in this slice.
+Normal report artifact downloads are available; sample, dropped-archive and process-memory downloads remain unavailable.
 
 The closed transport uses only reviewed HTTPS bindings, refuses redirects and shares a 20-second deadline, 20-request ceiling and 20-MiB decoded JSON ceiling per invocation.
 Binary responses have a separate 250-MiB ceiling.
@@ -86,6 +86,40 @@ Labs response envelopes remain array-shaped under `searches`, with result rows u
 The shared coordinator is implemented for later submission, guarded download and YARA command slices.
 This slice adds no executable write commands.
 See [guarded writes and artifact handling](docs/design.md#guarded-writes-and-artifact-handling) for the coordinator's policy, confirmation, journal and recovery contracts.
+
+## Reports, feeds and reviewed raw reads
+
+`hybrid-axi report show <id>` reads the summary; `report state <id>` reads submission state.
+Use a job ID or `sha256:environmentId`.
+Container summary responses with HTTP 410 remain errors and point to `report children <id>`.
+`report memory list <id>` lists metadata; `report memory strings/hex <id> --filename <name>` reads structured extracted strings or hex rows without downloading raw memory.
+`report screenshots <id>` reads the documented Base64 screenshot array with bounded previews.
+
+`report file <id> --type <type> --output <new-file>` downloads exactly one artifact to an existing directory.
+The destination must be new, with no symlink path components; completed bytes are published atomically without overwriting concurrent files.
+Files are private, bounded to 250 MiB, and saved unchanged without unpacking or executing them.
+Types `crt`, `pcap`, `json` and `memory-strings` use dedicated routes.
+Types `xml`, `html`, `pdf`, `maec`, `stix`, `misp`, `misp-json` and `openioc` use the deprecated generic route and disclose that fact in output.
+Samples, dropped archives, process memory and unknown types are refused.
+
+`feed latest` retains the requested deprecated 24-hour feed, capped upstream at 250 reports.
+`feed detonation` and `feed quick-scan` use current feeds capped at 250 and 2,500 respectively.
+`feed abuse --page <n>` reads one documented page and generates page guidance without following upstream URLs.
+`system version`, `environments`, `action-scripts`, `stats`, `configuration`, `queue-size` and `total-submissions` expose their reviewed read operations.
+
+Report, feed and system reads support `--fields` for extra fields and `--full` for all fields and untruncated text after redaction.
+Text previews are 1,000 characters; nested detail arrays preview 100 entries and disclose their original size.
+Collections have a separate local `--limit` default of 100, including under `--full`, and report returned count, available rows, known upstream total, completeness and continuation separately.
+Feed totals remain unknown unless the response supplies one; current feeds describe only their capped recent window.
+The CLI provides a rerun command whenever local truncation occurs and does not invent pagination for unpaged endpoints.
+
+`api get <path>` accepts a relative API path such as `/report/<id>/summary` or `/report/<id>/memory-dump/hex-dump?filename=<name>`.
+It serves only bound report/feed/system JSON reads, key inspection/quota, stable hash overview/lookup, experimental Labs overview and query results.
+Use `--labs` for a Labs path such as `/sample/<sha256>/overview`.
+Query keys must match the selected operation's strict schema; duplicate and malformed parameters fail before credentials are resolved.
+Named and raw reads share transport, decoders, redaction and output policies.
+Full URLs, encoded or traversing paths, binary routes, the mixed generic artifact route, consuming matches, refreshes, writes and unbound operations are blocked.
+Raw reads cannot supply headers, credentials, origins or larger budgets.
 
 ## Development
 

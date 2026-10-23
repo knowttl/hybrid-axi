@@ -7,6 +7,7 @@ import { createTransport } from "./transport.js";
 import { createSession } from "./session.js";
 import { TransportError } from "./transport-core.js";
 import { parseSearch, searchCommand } from "./search.js";
+import { parseReport, reportCommand } from "./reports.js";
 
 export async function main(argv = process.argv.slice(2), options: {
   credentials?: CredentialContext;
@@ -33,6 +34,17 @@ export async function main(argv = process.argv.slice(2), options: {
     }),
     commands: {
       scaffold: async () => {
+        const report = parseReport(argv);
+        if (report) {
+          selectors = { config: report.flags["--config"], profile: report.flags["--profile"] };
+          if (report.help) return report.help;
+          store.readOnly();
+          const loaded = store.load(selectors.config);
+          const profile = store.select(loaded.config, selectors.profile, selectors.config);
+          const credential = store.credentials(profile);
+          const transport = (options.createTransport ?? createTransport)({ ...credential, redact: (value) => store.redactor.payload(value) });
+          return store.redactor.payload(await reportCommand(report, transport)) as Record<string, unknown>;
+        }
         const search = parseSearch(argv);
         if (search) {
           selectors = { config: search.flags["--config"], profile: search.flags["--profile"] };
