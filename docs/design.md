@@ -78,8 +78,9 @@ Translate errors into `error: {code, message, operation, status?, keyLevel?, req
 Handle the documented `{message}` error, empty/malformed bodies and HTML failures without raw dependency output or stack traces.
 401 is `AUTH_REQUIRED`; 403 is permission denial, never an empty result.
 For a download 403, use known `/key/current` `auth_level_name` and the operation's `x-auth-level` where available.
+If the key level is unknown, inspect `/key/current` once without retries, within the same invocation deadline and request/JSON byte budgets.
 For a restricted key, report `KEY_LEVEL_RESTRICTED`, `keyLevel: restricted`, `requiredKeyLevel: default`, and explain account vetting is needed for download access.
-If key inspection is unavailable, say the level is unknown rather than inventing restricted status; suggest `hybrid-axi quota` and explain that non-vetted restricted keys cannot download.
+If key inspection fails or yields no recognized level, preserve the original download denial and report `keyLevel: unknown` rather than inventing restricted status; suggest `hybrid-axi quota` and explain that non-vetted restricted keys cannot download.
 Doctor cannot prove access to all operations and must not recommend broad elevation for ordinary reads.
 
 ## Profiles and authentication

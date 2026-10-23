@@ -48,7 +48,7 @@ The documented `apikey` quota block appears as `keyQuota` so it remains distingu
 Transport errors use a structured `error` object with code, operation and any known status, key level or retry interval.
 When a response was received, `error.rateLimits` preserves its allowlisted header observations, including on 429 and other failures.
 Download denials distinguish an inspected restricted key from an unknown key level and explain the account-vetting requirement.
-Download 403 responses trigger one bounded key inspection if the level is not already known; inspection failure reports an unknown level while preserving the original denial.
+See the design's [key-level inspection and error contracts](docs/design.md#transport-and-bounded-work) for download 403 handling.
 
 The closed transport uses only reviewed HTTPS bindings, refuses redirects and shares a 20-second deadline, 20-request ceiling and 20-MiB decoded JSON ceiling per invocation.
 Binary responses have a separate 250-MiB ceiling.
