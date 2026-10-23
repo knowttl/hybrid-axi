@@ -59,8 +59,50 @@ const fileArgs = () => ["submit", "file", "--file", sample, "--environment-id", 
 const urlArgs = ["submit", "url", "--url", "https://example.com/sample?a=1&b=2", "--environment-id", "160"];
 
 test.each(["--config", "--profile"])("dash-leading %s selectors work before and after the command", (flag) => {
-  expect(parseSubmission([flag, "-synthetic", ...urlArgs])?.flags[flag]).toBe("-synthetic");
-  expect(parseSubmission([...urlArgs, flag, "-synthetic"])?.flags[flag]).toBe("-synthetic");
+  expect(parseSubmission([`${flag}=-synthetic`, ...urlArgs])?.flags[flag]).toBe("-synthetic");
+  expect(parseSubmission([...urlArgs, `${flag}=-synthetic`])?.flags[flag]).toBe("-synthetic");
+});
+
+test.each(["--help", "--full", "--unknown"])("quick-scan comment cannot consume %s", async (flag) => {
+  await withFake([], async (fake) => {
+    const result = await invoke(["quick-scan", "url", "--url", "https://example.com", "--scan-type", "all", "--comment", flag], fake.fetch);
+    expect(result.code).toBe(2);
+    expect(result.stdout).toContain("Flag requires a value: --comment");
+    expect(fake.requests).toHaveLength(0);
+    expect(existsSync(journal)).toBe(false);
+  });
+});
+
+test.each(["--dry-run", "--help", "--execute", "--unknown"])("confirmed submission intent cannot consume %s", async (flag) => {
+  await withFake([], async (fake) => {
+    const confirm = confirmation(await invoke(urlArgs, fake.fetch));
+    const result = await invoke([...urlArgs, "--execute", "--confirm", confirm, "--intent-id", flag], fake.fetch);
+    expect(result.code).toBe(2);
+    expect(result.stdout).toContain("Flag requires a value: --intent-id");
+    expect(fake.requests).toHaveLength(0);
+    expect(existsSync(journal)).toBe(false);
+  });
+});
+
+test.each([
+  ["--comment="],
+  ["--comment= "],
+  ["--comment=one", "--comment", "two"],
+  ["--comment", "one", "--comment=two"],
+  ["--unknown=value"],
+  ["--execute=false"],
+  ["--dry-run=true"],
+  ["--help=true"],
+  ["--priority=11"],
+  ["--priority=-1"],
+  ["--script-logging=maybe"],
+])("invalid attached options fail before transmission: %j", async (...flags) => {
+  await withFake([], async (fake) => {
+    const result = await invoke([...urlArgs, ...flags], fake.fetch);
+    expect(result.code).toBe(2);
+    expect(fake.requests).toHaveLength(0);
+    expect(existsSync(journal)).toBe(false);
+  });
 });
 
 test("file preview discloses visibility, names sample and environment and sends nothing", async () => {
@@ -128,7 +170,7 @@ test.each([
 
 test("URL submission preserves the exact URL and explicit options without deprecated defaults", async () => {
   await withFake([{ status: 201, body: submitted }], async (fake) => {
-    const argv = [...urlArgs, "--network-settings", "simulated", "--script-logging", "false", "--priority", "4", "--custom-cmd-line", "--silent"];
+    const argv = [...urlArgs, "--network-settings", "simulated", "--script-logging", "false", "--priority", "4", "--custom-cmd-line=--silent"];
     const preview = await invoke(argv, fake.fetch);
     expect(preview.output).toMatchObject({ preview: { target: { url: urlArgs[3], environment_id: 160 } } });
     const result = await invoke([...argv, "--execute", "--confirm", confirmation(preview)], fake.fetch);
@@ -141,7 +183,7 @@ test("URL submission preserves the exact URL and explicit options without deprec
 
 test("document passwords are sent explicitly but redacted from previews and output", async () => {
   await withFake([{ status: 201, body: submitted }], async (fake) => {
-    const argv = [...fileArgs(), "--document-password", "--synthetic-document-password"];
+    const argv = [...fileArgs(), "--document-password=--synthetic-document-password"];
     const preview = await invoke(argv, fake.fetch);
     expect(preview.stdout).not.toContain("synthetic-document-password");
     expect(preview.output).toMatchObject({ preview: { proposed: { body: { document_password: "***redacted***" } } } });
@@ -229,7 +271,7 @@ test.each(["file", "url"])("quick-scan %s transmits under forced read-only witho
   configure(false);
   env.HYBRID_AXI_READ_ONLY = "true";
   await withFake([{ status: 201, body: scanned }], async (fake) => {
-    const argv = ["quick-scan", type, type === "file" ? "--file" : "--url", type === "file" ? sample : "https://example.com", "--scan-type", "all_lookup", "--comment", "--synthetic-comment", "--submit-name", "-sample"];
+    const argv = ["quick-scan", type, type === "file" ? "--file" : "--url", type === "file" ? sample : "https://example.com", "--scan-type", "all_lookup", "--comment=--synthetic-comment", "--submit-name=-sample"];
     const result = await invoke(argv, fake.fetch);
     expect(result.output).toEqual({ scan: scanned });
     expect(result.code).toBe(0);

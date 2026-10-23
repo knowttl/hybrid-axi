@@ -5,7 +5,11 @@ import type { Transport } from "./transport-core.js";
 
 export function parseSubmission(argv: string[]) {
   let prefix = 0;
-  while (["--config", "--profile"].includes(argv[prefix] ?? "") && argv[prefix + 1]) prefix += 2;
+  while (["--config", "--profile"].includes((argv[prefix] ?? "").split("=", 1)[0]!)) {
+    if (argv[prefix]!.includes("=")) prefix++;
+    else if (argv[prefix + 1] && !argv[prefix + 1]!.startsWith("-")) prefix += 2;
+    else break;
+  }
   argv = [...argv.slice(prefix), ...argv.slice(0, prefix)];
   const command = argv.slice(0, 2).join(" ");
   if (!Object.hasOwn(submissionCatalogue, command)) return undefined;
@@ -13,17 +17,21 @@ export function parseSubmission(argv: string[]) {
   const flags: Record<string, string> = {};
   const positional: string[] = [];
   const usage = (message: string): never => { throw new AxiError(message, "VALIDATION_ERROR", [
-    `Valid flags for ${command}: ${Object.keys(entry.flags).join(", ")}`, ...entry.examples,
+    `Valid flags for ${command}: ${Object.keys(entry.flags).join(", ")}`, "Use --flag=value for dash-leading values.", ...entry.examples,
   ]); };
   for (let index = 2; index < argv.length; index++) {
     const word = argv[index]!;
     if (!word.startsWith("-")) { positional.push(word); continue; }
-    if (!Object.hasOwn(entry.flags, word) || Object.hasOwn(flags, word)) usage(`Unknown or duplicate flag: ${word.split("=", 1)[0]}`);
-    if (["--help", "--execute", "--dry-run", "--full"].includes(word)) flags[word] = "true";
-    else {
-      const value = argv[++index];
-      if (!value?.trim()) usage(`Flag requires a value: ${word}`);
-      flags[word] = value!;
+    const equals = word.indexOf("=");
+    const flag = equals < 0 ? word : word.slice(0, equals);
+    if (!Object.hasOwn(entry.flags, flag) || Object.hasOwn(flags, flag)) usage(`Unknown or duplicate flag: ${flag}`);
+    if (["--help", "--execute", "--dry-run", "--full"].includes(flag)) {
+      if (equals >= 0) usage(`Flag does not accept a value: ${flag}`);
+      flags[flag] = "true";
+    } else {
+      const value = equals < 0 ? argv[++index] : word.slice(equals + 1);
+      if (!value?.trim() || equals < 0 && value.startsWith("-")) usage(`Flag requires a value: ${flag}`);
+      flags[flag] = value!;
     }
   }
   const needsId = command === "quick-scan submit" || command === "quick-scan show";
