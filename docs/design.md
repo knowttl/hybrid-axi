@@ -74,7 +74,7 @@ Honor valid `Retry-After` seconds or HTTP dates; return `RATE_LIMITED` with retr
 Never automatically replay an ambiguous timeout, including safe reads, quick scans, search starts, guarded downloads and mutations.
 Quick scans and search starts are single-send even though classified as reads; separate result/status reads can resume known IDs.
 
-Translate errors into `error: {code, message, operation, status?, keyLevel?, requiredKeyLevel?, retryAfter?, auditId?}` plus useful next-step hints.
+Translate errors into `error: {code, message, operation, status?, keyLevel?, requiredKeyLevel?, retryAfter?, rateLimits?, auditId?}` plus useful next-step hints.
 Handle the documented `{message}` error, empty/malformed bodies and HTML failures without raw dependency output or stack traces.
 401 is `AUTH_REQUIRED`; 403 is permission denial, never an empty result.
 For a download 403, use known `/key/current` `auth_level_name` and the operation's `x-auth-level` where available.
@@ -188,8 +188,11 @@ Never auto-submit, quick-scan or refresh a missing hash.
 The specs do not define a unique missing-analysis status/body, so implementation must distinguish confirmed absence from 401/403, malformed success and generic 404.
 Labs 425 means analysis is in progress, not absent: return explicit pending state and retry guidance without resubmitting.
 
-`doctor` and `quota` expose observed `Api-Limits`, `Submission-Limits`, `Quick-Scan-Limits`, `Sample-Download-Limits`, `Api-Version`, `Webservice-Version` and any observed `Retry-After`/rate-limit headers.
-Parse documented JSON header values tolerantly, bound/redact malformed values and identify absent headers as unavailable.
+`doctor` and `quota` expose only allowlisted header observations: JSON-valued `Api-Limits`, `Submission-Limits`, `Quick-Scan-Limits` and `Sample-Download-Limits`, plus text-valued `Api-Version`, `Webservice-Version`, `Retry-After`, `RateLimit`, `RateLimit-Policy`, `RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset`, `X-RateLimit-Limit`, `X-RateLimit-Remaining` and `X-RateLimit-Reset`.
+Extract these once at the shared transport boundary before status handling, preserving them on successful results and structured errors.
+Successful command output separates the two responses as `rateLimits.key` and `rateLimits.quota`; `error.rateLimits` describes the failing response.
+Represent parsed JSON or redacted text as `{value: ...}`, cap text values at 1,000 characters, and mark malformed JSON as `{malformed: true}` without exposing its raw value.
+Missing headers stay absent rather than becoming zero usage.
 The submit response documents a misspelled `Submission-Limits"` header; recognize it defensively without assuming the service emits it.
 Do not manufacture quota values, reset times or universal numeric rate limits.
 
@@ -345,6 +348,8 @@ No live behavior was probed in this design slice.
 14. YARA update is POST, not PUT/PATCH; it updates supplied fields only and also exposes `reset_counter`.
     A reset must be explicit in payload and preview; deletion returns 204 without a JSON body.
 15. The later request adds actual artium-axi integration after publication, replacing the original note-only exclusion; T13 is a separate host-repository PR.
+16. The CLI projects the documented `SubmissionQuota` per-key `apikey` blocks as `keyQuota` before sensitive-field redaction.
+    This preserves quota values while keeping the credential-field scrubber intact.
 
 ## Confirmed safety decisions
 

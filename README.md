@@ -2,8 +2,8 @@
 
 Agent-ergonomic CLI for the Hybrid Analysis API, read-only by default, with compact TOON output and explicitly guarded submissions, YARA changes and malware downloads.
 
-This repository ships the development scaffold and T2 local credential commands: home, auth status, setup guidance, profile list and config path.
-No API operations or npm release are available yet.
+This repository ships local credential commands plus the bounded `doctor` and `quota` API reads.
+No npm release or other API commands are available yet.
 The [design](docs/design.md) defines the planned command surface, complete stable/Labs operation ledger, credentials, safety boundaries, specification deviations and ordered implementation slices.
 The tool-specific no-mistakes configuration establishes offline validation before feature work.
 
@@ -34,6 +34,27 @@ The public OpenAPI snapshots and their source URLs, versions, fetch dates and by
 Design research fetched public documentation only and made no API operation calls.
 See [CONTRIBUTING.md](CONTRIBUTING.md) for implementation conventions and offline verification requirements.
 
+## Doctor and quota
+
+`hybrid-axi doctor` verifies credential protections, reads `/key/current` and `/key/submission-quota`, and reports authentication, key level, quota and observed limit headers.
+It does not prove access to other operations.
+`hybrid-axi quota` reads the same two operations and reports the quota body and separately observed headers from each response.
+Both commands accept `--config` and `--profile`, make at most two requests without retries, and never submit a sample or URL.
+The `api_key` and user fields from key inspection are always omitted.
+
+Header observations include quota, rate-limit, retry and API-version information from the explicit [header allowlist](docs/design.md#cli-and-output-contract).
+Unknown quota fields pass through after sensitive-field redaction.
+The documented `apikey` quota block appears as `keyQuota` so it remains distinguishable from credential fields during redaction.
+Transport errors use a structured `error` object with code, operation and any known status, key level or retry interval.
+When a response was received, `error.rateLimits` preserves its allowlisted header observations, including on 429 and other failures.
+Download denials distinguish an inspected restricted key from an unknown key level and explain the account-vetting requirement.
+Download commands themselves remain unavailable in this slice.
+
+The closed transport uses only reviewed HTTPS bindings, refuses redirects and shares a 20-second deadline, 20-request ceiling and 20-MiB decoded JSON ceiling per invocation.
+Binary responses have a separate 250-MiB ceiling.
+An explicitly retryable, non-consuming read can retry an explicit 429 or 502/503/504 response at most twice within those budgets.
+Ambiguous timeouts and network failures are never replayed.
+
 ## Development
 
 Use Node.js 22.12+ and Corepack with the pinned pnpm version.
@@ -54,6 +75,8 @@ Tests select affected tests plus fixed packaged-CLI and selection baselines; inf
 Missing comparison bases or baseline files fail closed.
 The test command builds the package and verifies specification freshness under a network-denying preload inherited by child Node processes.
 Packed tests install local dependency tarballs with npm offline, then exercise version, help, local setup/auth status and rejected input.
+Transport and CLI tests route validated logical URLs to our synthetic HTTPS upstream, trusting only its test certificate.
+The network preload denies external sockets, DNS and arbitrary subprocesses, and propagates to Node descendants even with a fresh environment.
 No validation command calls Hybrid Analysis or provisions a service.
 Live API acceptance belongs to the separately authorized T11 slice.
 

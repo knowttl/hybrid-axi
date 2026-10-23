@@ -81,10 +81,10 @@ test.each([
   expect(result.stderr).toBe("");
 });
 
-test("packed inventory remains non-executable evidence", async () => {
+test("packed inventory enables only reviewed key reads", async () => {
   const { pathToFileURL } = await import("node:url");
   const { transportBindings } = await import(pathToFileURL(join(packageRoot, "dist/src/catalogue.js")).href);
-  expect(transportBindings).toEqual({});
+  expect(Object.keys(transportBindings).sort()).toEqual(["key.current", "key.submission-quota"]);
   const inventory = JSON.parse(readFileSync(join(packageRoot, "inventory/capabilities.json"), "utf8"));
   expect(inventory.operations).toHaveLength(62);
   const schema = JSON.parse(readFileSync(join(packageRoot, "axi-credential.schema.json"), "utf8"));
@@ -102,6 +102,22 @@ test("packed local setup, help and paths work without credentials or network", (
   const result = cli("auth", "status", "--config", join(directory, "missing"), "--help");
   expect(result.status).toBe(0);
   expect(decode(result.stdout)).toMatchObject({ command: "auth status" });
+  expect(result.stderr).toBe("");
+});
+
+test.each(["doctor", "quota"])("packed %s help is available without credentials or HTTP", (command) => {
+  const result = cli(command, "--help");
+  expect(result.status).toBe(0);
+  expect(decode(result.stdout)).toMatchObject({ command, flags: { "--profile": expect.any(String), "--config": expect.any(String) } });
+  expect(result.stderr).toBe("");
+});
+
+test("packed quota cannot reach a real upstream with a synthetic environment key", () => {
+  const result = spawnSync(process.execPath, [entry, "quota"], { cwd: directory, encoding: "utf8",
+    env: { ...process.env, HYBRID_AXI_API_KEY: "synthetic-packed-network-key" } });
+  expect(result.status).toBe(1);
+  expect(decode(result.stdout)).toMatchObject({ error: { code: "NETWORK_ERROR", operation: "key.current" } });
+  expect(result.stdout + result.stderr).not.toContain("synthetic-packed-network-key");
   expect(result.stderr).toBe("");
 });
 

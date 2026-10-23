@@ -1,7 +1,15 @@
+import { keyDecoder, quotaDecoder } from "./key-contracts.js";
+import type { OperationBinding } from "./transport-core.js";
+
 export const DESCRIPTION = "Agent-friendly CLI for Hybrid Analysis, under construction";
 
 // Planned inventory entries never authorize execution. Feature slices bind reviewed operations here.
-export const transportBindings: Readonly<Record<string, never>> = Object.freeze({});
+export const transportBindings: Readonly<Record<string, OperationBinding>> = Object.freeze({
+  "key.current": Object.freeze({ method: "GET", path: "/api/v2/key/current", effect: "read", decoder: keyDecoder,
+    requiredKeyLevel: "restricted" }),
+  "key.submission-quota": Object.freeze({ method: "GET", path: "/api/v2/key/submission-quota", effect: "read", decoder: quotaDecoder,
+    requiredKeyLevel: "restricted" }),
+});
 export const catalogue = {
   home: {
     description: "Show local profile and policy without contacting Hybrid Analysis",
@@ -27,6 +35,16 @@ export const catalogue = {
     description: "Show a read-only config template and SecretRef setup guidance without writing files",
     flags: { "--help": "Show help; default false", "--config": "Config path; default HYBRID_AXI_CONFIG or platform config", "--profile": "Profile selector; template uses example" },
     examples: ["hybrid-axi setup", "hybrid-axi setup --config <path>"],
+  },
+  doctor: {
+    description: "Verify credentials and read key level, submission quota and observed limit headers; other access is unverified",
+    flags: { "--help": "Show help; default false", "--config": "Config path; default HYBRID_AXI_CONFIG or platform config", "--profile": "Profile name; default profile precedence" },
+    examples: ["hybrid-axi doctor", "hybrid-axi doctor --profile example"],
+  },
+  quota: {
+    description: "Read key level, submission quota and observed limit headers with two bounded requests and no retries",
+    flags: { "--help": "Show help; default false", "--config": "Config path; default HYBRID_AXI_CONFIG or platform config", "--profile": "Profile name; default profile precedence" },
+    examples: ["hybrid-axi quota", "hybrid-axi quota --profile example"],
   },
 } as const;
 
