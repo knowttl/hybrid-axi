@@ -74,9 +74,10 @@ export const reportBindings: Readonly<Record<string, OperationBinding>> = {
   ...Object.fromEntries(Object.entries(reportArtifacts).map(([type, binding]) => [`report artifact ${type}`, binding])),
 };
 
-export const reportCatalogue: Record<string, { description: string; flags: Record<string, string>; examples: string[] }> = {
+export const reportCatalogue: Record<string, { effect: "read" | "write" | "read/write"; description: string; flags: Record<string, string>; examples: string[] }> = {
   ...hashDownloadCatalogue,
   ...Object.fromEntries(Object.entries(reportReads).map(([command, binding]) => [command, {
+    effect: binding.effect,
     description: binding.description,
     flags: { ...common, ...(binding.rows ? list : {}), ...(command === "feed abuse" ? { "--page": "Upstream page; default 1" } : {}),
       ...(command === "report memory strings" || command === "report memory hex" ? { "--filename": "Required exact memory dump filename" } : {}) },
@@ -84,9 +85,11 @@ export const reportCatalogue: Record<string, { description: string; flags: Recor
       `hybrid-axi ${command} --help`],
   }])),
   "report file": { description: `Save one artifact unchanged to a new private file, bounded at 250 MiB; bin, dropped-files and memory require write scope, --execute and exact --confirm. Memory and legacy report formats use the deprecated generic route. ${downloadWarnings.join(" ")}`,
+    effect: "read/write",
     flags: { "--help": common["--help"], "--config": common["--config"], "--profile": common["--profile"], "--type": `Required single type: ${[...Object.keys(reportArtifacts), ...Object.keys(guardedArtifacts)].join(", ")}`, "--output": "Required new file in an existing directory; never stdout or overwrite", ...downloadFlags },
     examples: ["hybrid-axi report file <id> --type json --output report.json", "hybrid-axi report file <id> --type pcap --output capture.gz"] },
   "api get": { description: "Reviewed JSON GET only: same decoders, redaction, fields and bounds as named reads; rejects binary, mixed-effect, consuming, refresh and unbound routes",
+    effect: "read",
     flags: { ...common, ...list, "--labs": "Select experimental Labs API; default stable" },
     examples: ["hybrid-axi api get /report/<id>/summary", "hybrid-axi api get '/report/<id>/memory-dump/extracted-strings?filename=<name>'", "hybrid-axi api get /sample/<sha256>/overview --labs"] },
 };

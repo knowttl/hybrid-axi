@@ -13,26 +13,31 @@ export const termNames = ["filename", "filetype", "filetype_desc", "env_id", "co
 
 export const searchCatalogue = {
   "hash show": {
+    effect: "read",
     description: "Show stable SHA256 overview; --labs selects the experimental Labs overview",
     flags: { ...common, "--labs": "Experimental Labs overview; default false" },
     examples: ["hybrid-axi hash show <sha256>", "hybrid-axi hash show <sha256> --labs --full"],
   },
   "hash search": {
+    effect: "read",
     description: "Find associated reports by hash, or deprecated bulk lookup from a newline-separated file",
     flags: { ...common, "--hash": "One MD5/SHA1/SHA256/SHA512; exactly one selector required", "--hashes-file": "Newline-separated MD5/SHA1/SHA256 file; deprecated bulk route" },
     examples: ["hybrid-axi hash search --hash <hash>", "hybrid-axi hash search --hashes-file <path>"],
   },
   "search terms": {
+    effect: "read",
     description: "Search using at least one documented named filter",
     flags: { ...common, ...Object.fromEntries(termNames.map((name) => [`--${name.replaceAll("_", "-")}`, "Optional nonempty filter; default omitted"])) },
     examples: ["hybrid-axi search terms --filename invoice.exe", "hybrid-axi search terms --verdict 5 --port 443"],
   },
   "search run": {
+    effect: "read",
     description: "Experimental Labs query: start once, then fetch asynchronous results once; resume pending queries by ID",
     flags: { ...common, "--query": "Required nonempty query", "--size": "Results per page or async total; default 50, range 1-200", "--page": "Synchronous page, ignored asynchronously; default 1, minimum 1", "--date-from": "Inclusive YYYY-MM-DD; default omitted", "--date-to": "Inclusive YYYY-MM-DD; default omitted" },
     examples: ["hybrid-axi search run --query 'verdict:malicious'", "hybrid-axi search run --query 'score:80+' --size 20 --page 2"],
   },
   "search results": {
+    effect: "read",
     description: "Experimental Labs results for a known query ID; never starts a query",
     flags: common,
     examples: ["hybrid-axi search results <id>", "hybrid-axi search results <id> --full"],

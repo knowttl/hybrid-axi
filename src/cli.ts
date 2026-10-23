@@ -12,6 +12,7 @@ import { createWriteCoordinator } from "./writes.js";
 import { saveArtifact } from "./report-file.js";
 import { parseSubmission, quickScanCommand } from "./submissions.js";
 import { huntingRead, huntingView, parseHunting } from "./hunting.js";
+import { setupHooks } from "./setup.js";
 
 export async function main(argv = process.argv.slice(2), options: {
   credentials?: CredentialContext;
@@ -39,6 +40,7 @@ export async function main(argv = process.argv.slice(2), options: {
     }),
     commands: {
       scaffold: async () => {
+        if (argv[0] === "setup" && argv[1] === "hooks") return setupHooks(argv);
         const hunting = parseHunting(argv);
         if (hunting) {
           selectors = { config: hunting.flags["--config"], profile: hunting.flags["--profile"] };
@@ -117,6 +119,7 @@ export async function main(argv = process.argv.slice(2), options: {
           return store.redactor.payload(await searchCommand(search, transport)) as Record<string, unknown>;
         }
         const { command, flags } = commandInput(argv);
+        if (command === "setup hooks") return setupHooks(argv);
         selectors = { config: flags["--config"], profile: flags["--profile"] };
         if (!flags["--help"] && (command === "doctor" || command === "quota")) {
           store.readOnly();

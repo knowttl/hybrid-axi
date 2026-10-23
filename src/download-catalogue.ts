@@ -38,6 +38,7 @@ export const downloadFlags = {
 };
 export const hashDownloadCatalogue = {
   "hash file": {
+    effect: "write" as const,
     description: `Save one guarded sample unchanged to a new private file, bounded at 250 MiB. ${downloadWarnings.join(" ")}`,
     flags: { "--help": "Show help; default false", "--config": "Config path; default platform config", "--profile": "Profile name; default profile precedence",
       "--output": "Required new file in an existing directory; never stdout or overwrite", ...downloadFlags },
