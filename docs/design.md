@@ -342,6 +342,9 @@ The release [README deviation list](../README.md#deviations-from-the-prompt) own
 Those original findings came from specification review.
 Later authorized live acceptance found the following differences from the pinned snapshots; automated verification remains offline with synthetic fixtures.
 
+- Labs YARA create/update identifiers are limited to 25 characters, a limit absent from the pinned Labs spec.
+  Live acceptance returned HTTP 400 with `validation_errors` naming the identifier length for a longer identifier.
+  Validate this proven limit locally before preview or send for both create and update; no other field limits are inferred.
 - Stable `POST /search/terms` documents an array of `SampleTermsSearch`, but live responses contain one object with `search_terms`, `count` and `result`.
   Accept both envelopes and normalize to the existing `searches` collection; nullable sample verdict and score remain valid.
 - Labs `POST /search/query/run` documents arrays of `SearchResults` (200) or `SearchId` (202), but both observed 200 replies contain a single result object.

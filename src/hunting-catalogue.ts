@@ -5,7 +5,7 @@ import type { MutationOperation } from "./writes-core.js";
 const id = z.string().regex(/^[A-Za-z0-9_-]{1,256}$/);
 const text = z.string().trim().min(1);
 const categories = z.array(z.enum(["adware", "banker", "downloader", "dropper", "fakeav", "hacktool", "miner", "phishing", "pua", "ransomware", "spyware", "trojan", "virus", "worm"]));
-const fields = { identifier: text, threat_categories: categories, active: z.boolean().optional(),
+const fields = { identifier: text.max(25, "YARA rule identifier must be at most 25 characters"), threat_categories: categories, active: z.boolean().optional(),
   daily_notifications_limit: z.number().int().optional(), rule: z.string().min(1) };
 export const yaraCreate = z.strictObject(fields);
 export const yaraUpdate = z.strictObject({ ...z.strictObject(fields).partial().shape, reset_counter: z.boolean().optional() })
