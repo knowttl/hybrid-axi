@@ -35,7 +35,11 @@ export const huntingMutations: Readonly<Record<string, MutationOperation>> = {
   yaraUpdate: { input: z.strictObject({ id, body: yaraUpdate }), prepare(input) {
     const { id, body } = input as { id: string; body: z.infer<typeof yaraUpdate> };
     return { target: { id, reset_counter: body.reset_counter === true }, request: { pathParams: { id }, body } };
-  }, current, effect: "Update only supplied YARA fields; reset_counter:true resets the all-time matches counter", readBackHelp },
+  }, current, idChange(input, response) {
+    const previousId = (input as { id: string }).id;
+    const newId = (response as z.infer<typeof rule>).id;
+    return previousId === newId ? undefined : { previousId, newId };
+  }, effect: "Update only supplied YARA fields; reset_counter:true resets the all-time matches counter and changes the rule ID; use the returned ID", readBackHelp },
   yaraDelete: { input: z.strictObject({ id }), prepare(input) {
     const { id } = input as { id: string };
     return { target: { id }, request: { pathParams: { id } } };
@@ -43,7 +47,8 @@ export const huntingMutations: Readonly<Record<string, MutationOperation>> = {
   huntingMatches: { input: matchesQuery, prepare(input) {
     const query = input as z.infer<typeof matchesQuery>;
     return { target: { owner: "current-user", items_count: query.items_count, search_after: query.search_after ?? "all-undelivered" }, request: { query } };
-  }, effect: "Consume the current user's oldest undelivered matches in this scope; every returned match is marked delivered and will not be returned again",
+  }, effect: "Consume account-wide oldest undelivered matches across all rules, subject to count and timestamp; every returned match is marked delivered and will not be returned again",
+  warnings: ["Consumption is account-wide and irreversible: it marks every returned undelivered match for the account as delivered. No rule selector is supported."],
   readBackHelp: ["Reconcile the private journal and any returned match IDs; delivered matches cannot be read back through this endpoint. Never replay an ambiguous consumption."] },
 };
 const common = { "--help": "Show help; default false", "--config": "Config path; default platform config", "--profile": "Profile name; default profile precedence" };
@@ -57,12 +62,12 @@ export const huntingCatalogue: Record<string, HuntingCommand> = {
   "hunting yara show": { description: "Experimental Labs: show own YARA rule by required positional ID", effect: "read", operation: "yaraShow", flags: { ...common, ...view },
     examples: ["hybrid-axi hunting yara show <id>", "hybrid-axi hunting yara show <id> --full"] },
   ...Object.fromEntries(["create", "update", "delete"].map((verb) => [`hunting yara ${verb}`, {
-    description: `Experimental Labs: ${verb} own YARA rule; preview first, then --execute and exact --confirm.${verb === "update" ? " Partial POST; explicit reset_counter:true resets the all-time matches counter." : ""}`,
+    description: `Experimental Labs: ${verb} own YARA rule; preview first, then --execute and exact --confirm.${verb === "update" ? " Partial POST; explicit reset_counter:true resets the all-time matches counter and changes the rule ID. Use the returned ID; idChange reports previousId and newId when an update changes identity." : ""}`,
     effect: "write" as const, operation: `yara${verb[0]!.toUpperCase()}${verb.slice(1)}`,
     flags: { ...common, ...view, ...guards, ...(verb === "delete" ? {} : { "--body-file": "Required strict JSON body, at most 1 MiB; - reads stdin" }) },
     examples: [`hybrid-axi hunting yara ${verb}${verb === "create" ? "" : " <id>"}${verb === "delete" ? "" : " --body-file rule.json"}`, `hybrid-axi hunting yara ${verb} --help`],
   }])),
-  "hunting matches": { description: "Experimental Labs: consuming GET marks returned matches delivered; preview sends no request; never automatically replayed", effect: "write", operation: "huntingMatches",
+  "hunting matches": { description: "Experimental Labs: account-wide, irreversible consumption across all rules; every returned undelivered match for the account is marked delivered, subject to count and timestamp. No rule selector; preview sends no request; never automatically replayed", effect: "write", operation: "huntingMatches",
     flags: { ...common, ...view, ...guards, "--items-count": "Maximum returned matches; default 100, range 1-1000", "--search-after": "Optional RFC3339 date-time; only matches created after this timestamp" },
     examples: ["hybrid-axi hunting matches", "hybrid-axi hunting matches --items-count 20 --search-after 2026-01-01T00:00:00Z"] },
 };

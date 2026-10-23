@@ -179,6 +179,24 @@ test("delete accepts an empty 204 as a journaled success", async () => {
     expect(fake.requests[3]).toMatchObject({ method: "DELETE", url: "/api/labs/hunting/yara-rules/rule-1", body: "" });
   });
 });
+test.each([{ reset_counter: true }, { active: false }])("update reports replacement identity independently of field selection: %j", async (body) => {
+  writeFileSync(bodyFile, JSON.stringify(body));
+  await withFake([{ body: rule }, { body: rule }, { body: rule }, { body: { ...rule, id: "rule-2" } }], async (fake) => {
+    const confirm = confirmation(await invoke(updateArgs(), fake.fetch));
+    const result = await invoke([...updateArgs(), "--execute", "--confirm", confirm, "--fields", "identifier"], fake.fetch);
+    expect(result.code).toBe(0);
+    expect(result.output).toMatchObject({ idChange: { previousId: "rule-1", newId: "rule-2" } });
+    const records = readFileSync(join(directory, "state/hybrid-axi/writes.log"), "utf8").trim().split("\n").map((line) => JSON.parse(line));
+    expect(records.at(-1)).toMatchObject({ kind: "outcome", result: "SUCCESS", idChange: { previousId: "rule-1", newId: "rule-2" } });
+  });
+});
+test("default consumption preview discloses account-wide irreversible scope without HTTP", async () => {
+  await withFake([], async (fake) => {
+    const result = await invoke(["hunting", "matches"], fake.fetch);
+    expect(result.output).toMatchObject({ preview: { effect: expect.stringContaining("account-wide"), warnings: [expect.stringContaining("irreversible")] } });
+    expect(fake.requests).toHaveLength(0);
+  });
+});
 test("matches preview names consuming scope without HTTP then consumes once", async () => {
   const match = { id: "match-1", rule_id: "rule-1", sample_sha256: "a".repeat(64), match_date: "2026-01-02T00:00:00Z", future: 9 };
   await withFake([{ body: [match] }], async (fake) => {

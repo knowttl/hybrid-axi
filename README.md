@@ -73,12 +73,12 @@ Quick scans are read exceptions that transmit data, and `setup hooks` writes onl
 | `hybrid-axi hash search` | read | Find associated reports by hash, or deprecated bulk lookup from a newline-separated file |
 | `hybrid-axi hash show` | read | Show stable SHA256 overview; --labs selects the experimental Labs overview |
 | `hybrid-axi home` | read | Show local profile and policy without contacting Hybrid Analysis |
-| `hybrid-axi hunting matches` | write | Experimental Labs: consuming GET marks returned matches delivered; preview sends no request; never automatically replayed |
+| `hybrid-axi hunting matches` | write | Experimental Labs: account-wide, irreversible consumption across all rules; every returned undelivered match for the account is marked delivered, subject to count and timestamp. No rule selector; preview sends no request; never automatically replayed |
 | `hybrid-axi hunting yara create` | write | Experimental Labs: create own YARA rule; preview first, then --execute and exact --confirm. |
 | `hybrid-axi hunting yara delete` | write | Experimental Labs: delete own YARA rule; preview first, then --execute and exact --confirm. |
 | `hybrid-axi hunting yara list` | read | Experimental Labs: list own YARA rules; unknown response fields remain available |
 | `hybrid-axi hunting yara show` | read | Experimental Labs: show own YARA rule by required positional ID |
-| `hybrid-axi hunting yara update` | write | Experimental Labs: update own YARA rule; preview first, then --execute and exact --confirm. Partial POST; explicit reset_counter:true resets the all-time matches counter. |
+| `hybrid-axi hunting yara update` | write | Experimental Labs: update own YARA rule; preview first, then --execute and exact --confirm. Partial POST; explicit reset_counter:true resets the all-time matches counter and changes the rule ID. Use the returned ID; idChange reports previousId and newId when an update changes identity. |
 | `hybrid-axi profile list` | read | List configured profiles without resolving keys or contacting Hybrid Analysis |
 | `hybrid-axi quick-scan file` | read | Read exception: sends the sample to Hybrid Analysis without a write gate; never automatically replays |
 | `hybrid-axi quick-scan scanners` | read | Read available quick-scan services and supported scan types |
@@ -245,6 +245,9 @@ Compact rule fields are `id`, `identifier` and `active`; selected text previews 
 `hunting yara create --body-file <path>` requires a strict JSON object with `identifier`, `threat_categories` and YARA source in `rule`; unknown request fields are rejected.
 Optional fields are `active` and integer `daily_notifications_limit`.
 `hunting yara update <id> --body-file <path>` sends a partial POST containing only supplied fields, and accepts explicit `reset_counter:true` to reset the all-time matches counter.
+Resetting changes the rule ID; use the returned ID for subsequent operations.
+Any update returning a changed ID exposes `idChange` with `previousId` and `newId`, even with `--fields`.
+Identity changes are also retained under the [private journal contract](docs/design.md#guarded-writes-and-artifact-handling).
 For create and update, a supplied `identifier` is trimmed and must contain 1-25 characters; longer identifiers fail locally with `VALIDATION_ERROR` before preview or any HTTP request.
 `--body-file -` reads JSON from stdin, bounded to 1 MiB like regular body files.
 `hunting yara delete <id>` deletes the exact rule and accepts an empty 204 success.
@@ -252,7 +255,7 @@ Every change previews first and requires enabled write scope, `--execute` and th
 Update and delete previews read the current rule; execution reads it again and checks for changes before sending the mutation.
 
 `hunting matches` is a guarded consuming GET, with `--items-count` default 100 (range 1-1000) and optional RFC3339 `--search-after`.
-Its preview names the current user's undelivered-match scope without sending a request.
+Its help and preview disclose account-wide, irreversible consumption across all rules without sending a request; the API documents no rule selector.
 Execution returns the oldest matching undelivered entries and marks every returned match delivered, so it cannot be retrieved again through this endpoint.
 Compact fields are `id`, `rule_id`, `sample_sha256` and `match_date`.
 Consumption is never automatically retried; an ambiguous outcome requires journal reconciliation, not replay.
