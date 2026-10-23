@@ -154,13 +154,13 @@ Additional command contracts are:
 | `search terms` | Documented named filters only; strict nonempty input. | sha256, verdict, threat_score, report ID |
 | `search run` | Experimental Labs query, `--query`, `--size` (default 50, max 200), `--page`, `--date-from`, `--date-to`; starts once and retrieves results within the deadline. | sha256, verdict, score, query status |
 | `search results <id>` | Experimental resumable results read, never reruns the query. | See [shipped output](../README.md#hash-and-search). |
-| `report show/state <id>` | Job ID or `sha256:environmentId`; summary and state respectively. | id, state, verdict, threat_score |
+| `report show/state <id>` | Job ID or `sha256:environmentId`; summary and state respectively. | See [report field selections](../src/report-catalogue.ts). |
 | `report file <id>` | Exactly one `--type` and explicit new `--output`; one artifact per call, type determines gate below. | id, type, output, bytes |
 | `quick-scan file/url` | `--file` or `--url`, documented `--scan-type`; read-class but transmits the supplied sample/URL. | id, finished, sha256 |
 | `hunting yara list/show` | Experimental; list `--search`, `--threat-category`, `--status`; show positional ID. | id, identifier, active |
 | `hunting yara create/update/delete` | Experimental, operation-specific `--body-file` for create/update; exact confirmation. | id, identifier, active |
 | `hunting matches` | Experimental guarded write; `--items-count` (default 100, range 1-1000), optional `--search-after` timestamp; preview consuming scope without calling the endpoint. | id, rule, sha256, match time |
-| `feed latest` | Requested deprecated latest feed, `--limit` default 100; upstream caps 250 reports/24h. | report ID, sha256, verdict, timestamp |
+| `feed latest` | See [shipped feed behavior](../README.md#reports-feeds-and-reviewed-raw-reads). | See [feed field selections](../src/report-catalogue.ts). |
 | `api get <path>` | Relative API path plus `--labs` when appropriate; reviewed read-only GET bindings, validated query schema and normal output/transport policy. | Operation-specific fields |
 
 `api get` refuses binary routes, mixed-effect `/file/{type}`, refresh, consuming matches, unbound paths, full URLs and all writes; the HTTP method alone is insufficient authorization.
@@ -170,7 +170,8 @@ Raw reads cannot change credentials, origin, headers or budgets.
 Submission commands use the exact documented environment ID and options; never silently enable deprecated anti-evasion/network flags.
 
 Keep JSON internally and encode [TOON](https://toonformat.dev/reference/spec.html) at stdout.
-Use 3-4 useful fields for normal lists, `--fields` for explicit extra fields and `--full` for untruncated details.
+Use 3-4 useful fields for normal lists.
+See README's [hash and search](../README.md#hash-and-search) and [report, feed and system](../README.md#reports-feeds-and-reviewed-raw-reads) contracts for field selection and detail controls.
 Preview long text at 1,000 characters, include original length and offer `--full` only when truncation occurs.
 Lists expose returned count, upstream total when known, completeness and continuation separately from TOON array headers.
 Unknown totals stay unknown; truncation always has a command or selector to see more.
@@ -244,7 +245,7 @@ Normal report formats, certificate, PCAP and memory strings are reads; sample bi
 For `/report/{id}/file/{type}`, validate the documented type before dispatch: `bin`/`memory` are writes, `xml/json/html/pdf/maec/stix/misp/misp-json/openioc/crt/pcap` are reads, and unknown types fail closed.
 Prefer dedicated nondeprecated routes for JSON, PCAP, certificate and sample; the deprecated generic endpoint remains necessary for memory and other documented formats.
 Store exactly the provided compressed/archive bytes, without unpacking, recompressing or executing.
-Require an explicit new output path, refuse overwrite and unsafe paths, stream to a private bounded temporary file and publish atomically only after success.
+Require an explicit new output path, refuse overwrite and unsafe paths, write to a private bounded temporary file and publish atomically only after success.
 Treat `Vx-Filename` as untrusted metadata, never a destination path.
 Binary content never goes to stdout or logs.
 The archive/password discrepancy is documented in the decisions below, without blocking guarded execution.
@@ -359,6 +360,10 @@ No live behavior was probed in this design slice.
 15. The later request adds actual artium-axi integration after publication, replacing the original note-only exclusion; T13 is a separate host-repository PR.
 16. The CLI projects the documented `SubmissionQuota` per-key `apikey` blocks as `keyQuota` before sensitive-field redaction.
     This preserves quota values while keeping the credential-field scrubber intact.
+17. Compact feed output follows the individual schemas rather than inventing common verdict or timestamp values.
+    The [report catalogue](../src/report-catalogue.ts) owns the executable field selections and decoders.
+18. Report summary documents HTTP 410 with `SampleGone` for container files.
+    Keep it distinct from a successful summary and direct callers to the children read; do not interpret it as a missing analysis.
 
 ## Confirmed safety decisions
 

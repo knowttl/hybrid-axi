@@ -18,7 +18,7 @@ Match existing style, avoid adjacent refactors and never edit generated files or
 Only the reviewed HTTPS origin `https://hybrid-analysis.com` and API prefixes `/api/v2` and `/api/labs` are permitted at runtime.
 Never add arbitrary HTTP, alternate-origin, TLS-disable, inline-key or write-policy bypasses.
 Credentials resolve from environment or private-file SecretRefs; the default is `HYBRID_AXI_API_KEY`.
-Submissions, YARA mutations and binary/memory downloads use preview, explicit execution, exact-target confirmation and a durable redacted journal.
+Guarded operations use preview, explicit execution, exact-target confirmation and a durable redacted journal; see the design's [artifact classifications](docs/design.md#guarded-writes-and-artifact-handling) for which downloads require guards.
 Quick scans are reads by explicit policy but transmit the supplied sample or URL; help must say so.
 HTTP GET does not establish read safety: consuming hunting matches uses write guards, and refreshing external overview data is blocked.
 Never replay an ambiguous timeout, including a quick scan or asynchronous search start.

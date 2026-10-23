@@ -2,6 +2,7 @@ import { keyDecoder, quotaDecoder } from "./key-contracts.js";
 import type { OperationBinding } from "./transport-core.js";
 import { searchBindings, searchCatalogue } from "./search-catalogue.js";
 import type { MutationOperation } from "./writes-core.js";
+import { reportBindings, reportCatalogue } from "./report-catalogue.js";
 
 export const DESCRIPTION = "Agent-friendly CLI for Hybrid Analysis, under construction";
 
@@ -11,6 +12,7 @@ export const mutationOperations: Readonly<Record<string, MutationOperation>> = O
 // Planned inventory entries never authorize execution. Feature slices bind reviewed operations here.
 export const transportBindings: Readonly<Record<string, OperationBinding>> = Object.freeze({
   ...searchBindings,
+  ...reportBindings,
   "key.current": Object.freeze({ method: "GET", path: "/api/v2/key/current", effect: "read", decoder: keyDecoder,
     requiredKeyLevel: "restricted" }),
   "key.submission-quota": Object.freeze({ method: "GET", path: "/api/v2/key/submission-quota", effect: "read", decoder: quotaDecoder,
@@ -18,6 +20,7 @@ export const transportBindings: Readonly<Record<string, OperationBinding>> = Obj
 });
 export const catalogue = {
   ...searchCatalogue,
+  ...reportCatalogue,
   home: {
     description: "Show local profile and policy without contacting Hybrid Analysis",
     flags: { "--help": "Show help; default false", "--config": "Config path; default HYBRID_AXI_CONFIG or platform config", "--profile": "Profile name; default HYBRID_AXI_PROFILE or profile precedence" },
@@ -55,7 +58,7 @@ export const catalogue = {
   },
 } as const;
 
-export function suggestion(command: keyof typeof catalogue, config?: string, profile?: string): string {
+export function suggestion(command: string, config?: string, profile?: string): string {
   const quote = (value: string) => `'${value.replaceAll("'", process.platform === "win32" ? "''" : "'\"'\"'")}'`;
   return `Run hybrid-axi ${command}${config === undefined ? "" : ` --config ${quote(config)}`}${profile === undefined ? "" : ` --profile ${quote(profile)}`}`;
 }
