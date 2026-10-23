@@ -2,8 +2,7 @@
 
 Keep changes focused and describe the problem, resulting behavior, scope, and verification in the pull request.
 Follow [the design](docs/design.md); the operation ledger is evidence, not permission to expose arbitrary HTTP.
-The scaffold ships version, home and help only; API commands arrive in later slices.
-The authoritative commands are `corepack pnpm run build`, `corepack pnpm run lint`, `corepack pnpm test`, and `corepack pnpm run spec:check`.
+See [README](README.md) for shipped behavior and development commands.
 
 ## TypeScript conventions
 
@@ -42,7 +41,7 @@ It must land on the default branch before any feature slice because no-mistakes 
 The configuration targets hybrid-axi's real commands, tests, public repository and private-data review rules.
 Use affected tests plus a fixed critical CLI/safety baseline; shared infrastructure, dependencies, specs and selector changes run the full suite.
 Fail closed when test selection cannot determine the merge base or required baseline.
-Document the actual commands in README once scaffolded; do not claim nonexistent checks passed.
+Keep the development commands in README accurate; do not claim checks passed without running them.
 Verify specification hashes, complete ledger coverage and generated declarations offline.
 The release slice will generate command reference and `skills/hybrid-axi/SKILL.md` from the catalogue and check freshness.
 Do not fetch floating specs or call the real API during validation.

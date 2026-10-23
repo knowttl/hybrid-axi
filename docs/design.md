@@ -1,7 +1,7 @@
 # hybrid-axi design
 
 Planning baseline prepared on 2026-10-23.
-This document defines intended behavior; no executable tool is shipped in this design slice.
+This document defines intended behavior across the implementation slices below.
 See [README](../README.md) for the current project status.
 
 ## Purpose and scope
@@ -24,7 +24,7 @@ No design research calls an API operation or uses a credential.
 | Sensitive artifacts | Allow guarded downloads, save bytes as provided, never extract, execute, encrypt or repackage; gzip/ZIP delivery does not promise password protection. |
 | Hunting matches | The recent-matches GET consumes delivery state and is a guarded write, including preview, execute and exact confirmation. |
 | Credentials | One `api-key` header for both APIs, default SecretRef `{"env":"HYBRID_AXI_API_KEY"}`, private-file references supported. |
-| Delivery | Tool-specific no-mistakes configuration in the next scaffold PR, full local validation and private-data check, auto-merge on green; npm trusted publishing later. |
+| Delivery | Tool-specific no-mistakes configuration in T1, full local validation and private-data check, auto-merge on green; npm trusted publishing later. |
 | Hosted use | Separate final artium-axi PR after npm publication, pinned released version and managed key. |
 
 ## Evidence and API contracts
@@ -39,7 +39,7 @@ The ledger classifies 39 reads, 12 guarded writes and 11 blocked operations, cou
 Only public documentation and its assets were fetched; no API operation was invoked.
 
 Pin bytes rather than relying on version strings to identify a snapshot.
-T1 adds offline `spec:check` for hashes, all method/path classifications and deterministic type generation.
+See [README development commands](../README.md#development) for offline specification and generated-artifact checks.
 Spec refresh is explicit: review routes, parameters, effects, auth levels, pagination, schemas and errors before changing hashes.
 New operations stay blocked until reviewed and explicitly bound in the executable catalogue.
 
