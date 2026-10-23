@@ -86,7 +86,7 @@ test("packed inventory enables only reviewed operations", async () => {
   const { transportBindings } = await import(pathToFileURL(join(packageRoot, "dist/src/catalogue.js")).href);
   expect(Object.keys(transportBindings).sort()).toEqual([
     "convertQuickScan", "feed abuse", "feed detonation", "feed latest", "feed quick-scan",
-    "hash-download-bin", "hashOverview", "hashSearch", "hashesSearch", "key.current", "key.submission-quota", "labsOverview", "queryResults", "queryRun",
+    "hash-download-bin", "hashOverview", "hashSearch", "hashesSearch", "huntingMatches", "key.current", "key.submission-quota", "labsOverview", "queryResults", "queryRun",
     "quickScanFile", "quickScanShow", "quickScanState", "quickScanUrl",
     "report artifact crt", "report artifact html", "report artifact json", "report artifact maec", "report artifact memory-strings",
     "report artifact misp", "report artifact misp-json", "report artifact openioc", "report artifact pcap", "report artifact pdf", "report artifact stix", "report artifact xml",
@@ -94,6 +94,7 @@ test("packed inventory enables only reviewed operations", async () => {
     "report-download-bin", "report-download-dropped-files", "report-download-memory",
     "submitDroppedFile", "submitFile", "submitUrl",
     "system action-scripts", "system configuration", "system environments", "system queue-size", "system stats", "system total-submissions", "system version", "termsSearch",
+    "yaraCreate", "yaraDelete", "yaraList", "yaraShow", "yaraUpdate",
   ]);
   const inventory = JSON.parse(readFileSync(join(packageRoot, "inventory/capabilities.json"), "utf8"));
   expect(inventory.operations).toHaveLength(62);

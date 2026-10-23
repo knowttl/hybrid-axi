@@ -8,7 +8,7 @@ export type OperationBinding = Readonly<{
   path: string;
   effect: "read" | "write";
   decoder: z.ZodType;
-  query?: z.ZodType<Record<string, string | number | boolean | undefined>>;
+  query?: z.ZodType<Record<string, string | number | boolean | string[] | undefined>>;
   body?: z.ZodType;
   bodyEncoding?: "form" | "multipart";
   retrySafe?: boolean;
@@ -17,7 +17,7 @@ export type OperationBinding = Readonly<{
 }>;
 export type RequestOptions = {
   pathParams?: Readonly<Record<string, string>>;
-  query?: Readonly<Record<string, string | number | boolean>>;
+  query?: Readonly<Record<string, string | number | boolean | string[]>>;
   body?: unknown;
   retry?: false;
   signal?: AbortSignal;
@@ -84,7 +84,9 @@ export function constructTransport(options: { credential: Credential; origin?: s
     if (binding.query) {
       const decoded = binding.query.safeParse(input.query ?? {});
       if (!decoded.success) fail("VALIDATION_ERROR", "Invalid operation query parameters", operation);
-      for (const [name, value] of Object.entries(decoded.data!)) if (value !== undefined) url.searchParams.set(name, String(value));
+      for (const [name, value] of Object.entries(decoded.data!)) if (value !== undefined) {
+        for (const entry of Array.isArray(value) ? value : [value]) url.searchParams.append(name, String(entry));
+      }
     } else if (input.query && Object.keys(input.query).length) {
       fail("VALIDATION_ERROR", "This operation does not accept query parameters", operation);
     }
@@ -250,6 +252,7 @@ export function constructTransport(options: { credential: Credential; origin?: s
           }
           let responseBody: unknown;
           if (reviewed.download) responseBody = raw;
+          else if (response.status === 204) responseBody = null;
           else {
             try { responseBody = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(raw)); }
             catch { fail("MALFORMED_RESPONSE", "Upstream returned invalid JSON", operation, { status: response.status }); }
