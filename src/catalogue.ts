@@ -1,5 +1,6 @@
 import { keyDecoder, quotaDecoder } from "./key-contracts.js";
 import type { OperationBinding } from "./transport-core.js";
+import { searchCatalogue } from "./search-catalogue.js";
 
 export const DESCRIPTION = "Agent-friendly CLI for Hybrid Analysis, under construction";
 
@@ -11,6 +12,7 @@ export const transportBindings: Readonly<Record<string, OperationBinding>> = Obj
     requiredKeyLevel: "restricted" }),
 });
 export const catalogue = {
+  ...searchCatalogue,
   home: {
     description: "Show local profile and policy without contacting Hybrid Analysis",
     flags: { "--help": "Show help; default false", "--config": "Config path; default HYBRID_AXI_CONFIG or platform config", "--profile": "Profile name; default HYBRID_AXI_PROFILE or profile precedence" },
