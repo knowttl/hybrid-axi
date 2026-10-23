@@ -199,6 +199,7 @@ Do not manufacture quota values, reset times or universal numeric rate limits.
 
 Default read-only includes keys with elevated upstream privileges.
 Follow vectra-axi's coordinator: hand-enabled immutable profile operation allowlist, forced read-only override, preview, exact-target confirmation and durable redacted journal.
+The coordinator snapshots the selected file profile's scope; environment profiles cannot enable writes, and host approval cannot widen that scope.
 An empty allowlist denies all guarded operations, including guarded downloads; flags cannot widen policy.
 No server-side dry-run facility is assumed.
 
@@ -208,6 +209,11 @@ No server-side dry-run facility is assumed.
 4. Without `--execute`, return only the preview; `--dry-run` is mutually exclusive with execution.
 5. Require typed `--confirm` equal to the exact preview target and apply an additional host approval hook when supplied.
 6. Durably reserve intent, check changed target state, send once through single-use authorization bound to operation/path/payload/target, and record the result.
+
+The exact confirmation string encodes the profile, operation, target selectors and a digest binding the profile, origin, target and prepared request method, URL and body.
+State readers can call only reviewed read bindings.
+Execution rereads optional state after intent reservation; changed state aborts with `PREVIEW_CHANGED` and records `NOT_SENT`.
+Scope and forced read-only are checked again after approval and immediately before authorization.
 
 Submission confirmation binds profile, operation, file SHA-256 or exact normalized URL, environment ID and canonical option digest.
 Every submission preview states: **The sample and its report can become visible to the community.**
@@ -221,11 +227,15 @@ Its preview says that returned matches are marked delivered and will not be retu
 The operation does not offer stable pre-read match IDs, so confirmation names the exact consuming scope rather than claiming a fixed match set.
 Read classification for quick scan is a deliberate exception and does not mean it avoids upload or other remote effects.
 
-Use a private durable `writes.log` in the state directory, with a nonblank `HYBRID_AXI_WRITE_LOG` override for controlled hosts.
-Record audit ID, operation, target/digest, effect and outcome, excluding keys, headers, source bodies and artifact contents.
+Use a private durable `writes.log` in the state directory, with a nonblank absolute `HYBRID_AXI_WRITE_LOG` override for controlled hosts.
+Record timestamp, audit ID, hashed intent ID, profile, operation name, target/request digest, write effect and outcome with any known HTTP status, excluding keys, headers, source bodies and artifact contents.
 Flush intent before any send; serialization, duplicate-intent checks, malformed-journal and unresolved-lock refusal follow vectra-axi's contract.
+An explicit coordinator `intentId` is hashed for duplicate detection across invocations; omitting it uses a fresh audit UUID, not payload-based deduplication or upstream idempotency.
+An already reserved intent returns `ALREADY_EXECUTED` and its original audit ID, even if its outcome is known.
 Failure to reserve intent blocks sending; failure to record outcome after sending reports possible success.
 Ambiguous outcomes return `OUTCOME_UNKNOWN`, audit ID and read-back guidance, never replay or an assurance that nothing happened.
+Reconcile the journal and read back the target before deciding on a new action; never replay an unresolved intent with a new ID.
+Locks left by an interrupted process require manual reconciliation and are never automatically cleared.
 Re-reads narrow YARA races but do not provide undocumented compare-and-set or idempotency guarantees.
 Only establish a no-op where a read proves the desired state; generic 404 is not proof of an already-deleted rule.
 

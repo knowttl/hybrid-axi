@@ -85,20 +85,7 @@ Labs response envelopes remain array-shaped under `searches`, with result rows u
 
 The shared coordinator is implemented for later submission, guarded download and YARA command slices.
 This slice adds no executable write commands.
-It snapshots the selected file profile's operation allowlist; environment profiles and the forced read-only override cannot widen that scope.
-Policy applies before previews and their optional state reads.
-Execution requires `--execute` and the exact preview confirmation, binding the profile, operation, target selectors and canonical request digest.
-An optional host approval hook adds another gate.
-State readers may call only reviewed read operations, and a changed target state aborts execution after intent reservation.
-A reread narrows races without claiming server-side compare-and-set protection.
-
-The private state directory holds `writes.log`; `HYBRID_AXI_WRITE_LOG` can select a nonblank absolute path.
-The journal records audit IDs, operation and target digests, effects and outcomes, excluding payloads, headers, keys and response bodies.
-Intent is flushed before a single-use authorization permits sending the exact prepared request.
-Malformed journals, existing locks, duplicate intent IDs and reservation failures block sending.
-A failed outcome write or ambiguous transport failure reports `OUTCOME_UNKNOWN`, the audit ID and operation-specific read-back guidance.
-Never replay an ambiguous intent; reconcile the journal and read back the target before deciding on a new action.
-Locks left by an interrupted process require manual reconciliation and are never automatically cleared.
+See [guarded writes and artifact handling](docs/design.md#guarded-writes-and-artifact-handling) for the coordinator's policy, confirmation, journal and recovery contracts.
 
 ## Development
 
