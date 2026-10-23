@@ -10,6 +10,7 @@ import { parseSearch, searchCommand } from "./search.js";
 import { parseReport, reportCommand } from "./reports.js";
 import { createWriteCoordinator } from "./writes.js";
 import { saveArtifact } from "./report-file.js";
+import { parseSubmission, quickScanCommand } from "./submissions.js";
 
 export async function main(argv = process.argv.slice(2), options: {
   credentials?: CredentialContext;
@@ -37,6 +38,24 @@ export async function main(argv = process.argv.slice(2), options: {
     }),
     commands: {
       scaffold: async () => {
+        const submission = parseSubmission(argv);
+        if (submission) {
+          selectors = { config: submission.flags["--config"], profile: submission.flags["--profile"] };
+          if (submission.help) return submission.help;
+          if (submission.entry.effect === "write") {
+            const coordinator = (options.createWriteCoordinator ?? createWriteCoordinator)(selectors, options.credentials);
+            return store.redactor.payload(await coordinator.run(submission.entry.operation, submission.body, {
+              execute: Boolean(submission.flags["--execute"]), dryRun: Boolean(submission.flags["--dry-run"]),
+              confirm: submission.flags["--confirm"], intentId: submission.flags["--intent-id"],
+            })) as Record<string, unknown>;
+          }
+          store.readOnly();
+          const loaded = store.load(selectors.config);
+          const profile = store.select(loaded.config, selectors.profile, selectors.config);
+          const credential = store.credentials(profile);
+          const transport = (options.createTransport ?? createTransport)({ ...credential, redact: (value) => store.redactor.payload(value) });
+          return store.redactor.payload(await quickScanCommand(submission, transport)) as Record<string, unknown>;
+        }
         const report = parseReport(argv);
         if (report) {
           selectors = { config: report.flags["--config"], profile: report.flags["--profile"] };

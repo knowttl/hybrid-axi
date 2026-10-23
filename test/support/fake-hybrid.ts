@@ -27,7 +27,7 @@ export function fakeTransport(replies: (Reply | "hang" | "disconnect")[], option
     });
     return new Response(reply.bytes ?? reply.text ?? JSON.stringify(reply.body), { status: reply.status ?? 200, headers: reply.headers });
   };
-  return { requests, transport: constructTransport({ credential: options.credential }, {
+  return { requests, fetch, transport: constructTransport({ credential: options.credential }, {
     ...options, bindings: options.bindings ?? transportBindings, fetch,
   }) };
 }
@@ -35,11 +35,12 @@ export function fakeTransport(replies: (Reply | "hang" | "disconnect")[], option
 export async function fakeHttpsHybrid(replies: Reply[]) {
   const cert = readFileSync(new URL("../fixtures/cert.pem", import.meta.url));
   const key = readFileSync(new URL("../fixtures/key.pem", import.meta.url));
-  const requests: { method: string; url: string; headers: Record<string, string | string[] | undefined>; body: string }[] = [];
+  const requests: { method: string; url: string; headers: Record<string, string | string[] | undefined>; body: string; bytes: Buffer }[] = [];
   const server = createServer({ key, cert }, async (request, response) => {
     const chunks: Buffer[] = [];
     for await (const chunk of request) chunks.push(Buffer.from(chunk));
-    requests.push({ method: request.method!, url: request.url!, headers: request.headers, body: Buffer.concat(chunks).toString("utf8") });
+    const bytes = Buffer.concat(chunks);
+    requests.push({ method: request.method!, url: request.url!, headers: request.headers, body: bytes.toString("utf8"), bytes });
     const reply = replies.shift() ?? { status: 500, body: { message: "Unexpected fake request" } };
     response.writeHead(reply.status ?? 200, { "content-type": "application/json", ...reply.headers });
     response.end(reply.bytes ?? reply.text ?? JSON.stringify(reply.body));
@@ -48,20 +49,24 @@ export async function fakeHttpsHybrid(replies: Reply[]) {
   const release = allowFakeServer(server);
   const address = server.address();
   if (!address || typeof address === "string") throw new Error("Fake server unavailable");
-  const fetch: typeof globalThis.fetch = (input, init = {}) => new Promise((resolve, reject) => {
-    const url = new URL(String(input));
-    const pending = httpsRequest({ hostname: "127.0.0.1", port: address.port, ca: cert, rejectUnauthorized: true,
-      path: url.pathname + url.search, method: init.method, headers: init.headers as Record<string, string>,
-      signal: init.signal ?? undefined, agent: false }, (response) => {
-      const headers = new Headers();
-      for (const [name, value] of Object.entries(response.headers)) {
-        if (value !== undefined) headers.set(name, Array.isArray(value) ? value.join(", ") : value);
-      }
-      resolve(new Response(Readable.toWeb(response) as ReadableStream<Uint8Array>, { status: response.statusCode!, headers }));
+  const fetch: typeof globalThis.fetch = async (input, init = {}) => {
+    const encoded = new Request(String(input), init);
+    const body = init.body === undefined ? undefined : Buffer.from(await encoded.arrayBuffer());
+    return new Promise((resolve, reject) => {
+      const url = new URL(String(input));
+      const pending = httpsRequest({ hostname: "127.0.0.1", port: address.port, ca: cert, rejectUnauthorized: true,
+        path: url.pathname + url.search, method: init.method, headers: Object.fromEntries(encoded.headers),
+        signal: init.signal ?? undefined, agent: false }, (response) => {
+        const headers = new Headers();
+        for (const [name, value] of Object.entries(response.headers)) {
+          if (value !== undefined) headers.set(name, Array.isArray(value) ? value.join(", ") : value);
+        }
+        resolve(new Response(Readable.toWeb(response) as ReadableStream<Uint8Array>, { status: response.statusCode!, headers }));
+      });
+      pending.once("error", reject);
+      pending.end(body);
     });
-    pending.once("error", reject);
-    pending.end(init.body);
-  });
+  };
   return { requests, fetch, async close() {
     release();
     server.closeAllConnections();

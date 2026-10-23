@@ -168,7 +168,8 @@ Additional command contracts are:
 Raw reads cannot change credentials, origin, headers or budgets.
 `hash search --hashes-file` uses the deprecated `/search/hashes` operation because the requested bulk behavior has no equivalent stable bulk replacement in this snapshot; document that warning.
 `--body-file -` may use stdin for YARA source/JSON; reject competing stdin consumers and enforce size bounds.
-Submission commands use the exact documented environment ID and options; never silently enable deprecated anti-evasion/network flags.
+Submission selectors and options are operation-specific; the [submission definitions](../src/submission-catalogue.ts) own their schemas, including which operations accept an environment ID.
+Never silently enable deprecated anti-evasion/network flags.
 
 Keep JSON internally and encode [TOON](https://toonformat.dev/reference/spec.html) at stdout.
 Use 3-4 useful fields for normal lists.
@@ -217,7 +218,8 @@ State readers can call only reviewed read bindings.
 Execution rereads optional state after intent reservation; changed state aborts with `PREVIEW_CHANGED` and records `NOT_SENT`.
 Scope and forced read-only are checked again after approval and immediately before authorization.
 
-Submission confirmation binds profile, operation, file SHA-256 or exact normalized URL, environment ID and canonical option digest.
+Submission confirmation binds profile, operation, exact target selectors and a digest of the complete prepared request.
+The [submission definitions](../src/submission-catalogue.ts) own each operation's target selectors; see [README](../README.md#submissions-and-quick-scans) for shipped submission behavior.
 Every submission preview states: **The sample and its report can become visible to the community.**
 YARA creates bind the exact identifier and payload digest; update/delete bind exact rule ID and proposed change digest.
 Download confirmation binds profile, report/hash ID, artifact kind, any dropped hash or memory selector and destination.
