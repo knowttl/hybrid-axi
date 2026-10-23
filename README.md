@@ -42,11 +42,11 @@ It does not prove access to other operations.
 Both commands accept `--config` and `--profile`, make at most two requests without retries, and never submit a sample or URL.
 The `api_key` and user fields from key inspection are always omitted.
 
-Limit observations use the documented JSON-valued `Api-Limits`, `Submission-Limits`, `Quick-Scan-Limits` and `Sample-Download-Limits` headers.
-Missing headers stay absent; malformed JSON is marked explicitly rather than becoming zero usage.
+Header observations include quota, rate-limit, retry and API-version information from the explicit [header allowlist](docs/design.md#cli-and-output-contract).
 Unknown quota fields pass through after sensitive-field redaction.
 The documented `apikey` quota block appears as `keyQuota` so it remains distinguishable from credential fields during redaction.
 Transport errors use a structured `error` object with code, operation and any known status, key level or retry interval.
+When a response was received, `error.rateLimits` preserves its allowlisted header observations, including on 429 and other failures.
 Download denials distinguish an inspected restricted key from an unknown key level and explain the account-vetting requirement.
 Download commands themselves remain unavailable in this slice.
 
