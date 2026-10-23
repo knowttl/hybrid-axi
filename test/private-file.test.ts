@@ -1,6 +1,7 @@
 import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { execFileSync } from "node:child_process";
 import { afterEach, beforeEach, expect, test } from "vitest";
 import { privateFiles, toolDirectory, type WindowsAcl } from "../src/private-file.js";
 
@@ -76,6 +77,43 @@ test.each([false, true])("Windows reads refuse an unprotected DACL (secret: %s)"
   const acl: WindowsAcl = (_path, action) => { if (action === "verify") throw new Error("Unprotected DACL"); };
   expect(() => privateFiles({ platform: "win32", acl }).read(path, secret))
     .toThrowError(expect.objectContaining({ code: "CONFIG_INSECURE" }));
+});
+
+function setWindowsFileAcl(path: string, access: string, principal?: string) {
+    execFileSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command",
+      `$ErrorActionPreference='Stop'; $p='${path.replaceAll("'", "''")}'; `
+      + `$sid=[Security.Principal.WindowsIdentity]::GetCurrent().User; `
+      + `$acl=New-Object Security.AccessControl.FileSecurity; $acl.SetOwner($sid); $acl.SetAccessRuleProtection($true,$false); `
+      + `$rule=New-Object Security.AccessControl.FileSystemAccessRule($sid,'${access}','Allow'); $acl.AddAccessRule($rule); `
+      + (principal ? `$extra=New-Object Security.Principal.SecurityIdentifier('${principal}'); $rule=New-Object Security.AccessControl.FileSystemAccessRule($extra,'Read','Allow'); $acl.AddAccessRule($rule); ` : "")
+      + `Set-Acl -LiteralPath $p -AclObject $acl`,
+    ], { stdio: "pipe" });
+}
+
+test.skipIf(process.platform !== "win32").each(["FullControl", "Read"])("Windows reads accept a real owner-only %s DACL", (rights) => {
+  const path = join(directory, "secret");
+  writeFileSync(path, "synthetic-private");
+  try {
+    setWindowsFileAcl(path, rights);
+    const files = privateFiles();
+    expect(files.read(path)).toBe("synthetic-private");
+    expect(files.read(path, true)).toBe("synthetic-private");
+  } finally {
+    setWindowsFileAcl(path, "FullControl");
+  }
+});
+
+test.skipIf(process.platform !== "win32")("Windows reads reject a real foreign-principal grant", () => {
+  const path = join(directory, "secret");
+  writeFileSync(path, "synthetic-private");
+  try {
+    setWindowsFileAcl(path, "Read", "S-1-1-0");
+    const files = privateFiles();
+    expect(() => files.read(path)).toThrowError(expect.objectContaining({ code: "CONFIG_INSECURE" }));
+    expect(() => files.read(path, true)).toThrowError(expect.objectContaining({ code: "CONFIG_INSECURE" }));
+  } finally {
+    setWindowsFileAcl(path, "FullControl");
+  }
 });
 
 test("Windows ordinary reads refuse reparse points through the platform boundary", () => {
