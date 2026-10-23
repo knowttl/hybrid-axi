@@ -1,20 +1,11 @@
 import { readFileSync, statSync } from "node:fs";
 import { AxiError } from "axi-sdk-js";
 import { z } from "zod";
-import { searchCatalogue, termNames, type searchBindings } from "./search-catalogue.js";
-
-export type SearchRequest = (operation: keyof typeof searchBindings, input?: {
-  params?: Record<string, string>;
-  body?: Record<string, unknown>;
-}) => Promise<{ status: number; data: unknown }>;
+import { searchCatalogue, termNames } from "./search-catalogue.js";
+import { hashResult, labsOverview, queryResult, queryStart, sample, stableOverview, termsResult } from "./search-contracts.js";
+import { TransportError, type Transport } from "./transport-core.js";
 
 const hash = /^[a-f\d]+$/i;
-const object = z.looseObject({});
-const sample = z.looseObject({ sha256: z.string().nullable(), verdict: z.string().nullable().optional(), threat_score: z.number().nullable().optional() });
-const report = z.looseObject({ id: z.string().nullable(), verdict: z.string().nullable().optional() });
-const hashResult = z.looseObject({ sha256s: z.array(z.string()), reports: z.array(report) });
-const termsResult = z.array(z.looseObject({ count: z.number().int().nonnegative(), result: z.array(sample) }));
-const queryResult = z.array(z.looseObject({ query_status: z.string(), number_of_results: z.number().int().nonnegative().optional(), number_of_pages: z.number().int().nonnegative().optional(), results: z.array(sample).optional() }));
 
 function decode<T>(schema: z.ZodType<T>, data: unknown): T {
   const parsed = schema.safeParse(data);
@@ -23,6 +14,9 @@ function decode<T>(schema: z.ZodType<T>, data: unknown): T {
 }
 
 export function parseSearch(argv: string[]) {
+  let prefix = 0;
+  while (["--config", "--profile"].includes(argv[prefix] ?? "") && argv[prefix + 1] && !argv[prefix + 1]!.startsWith("-")) prefix += 2;
+  argv = [...argv.slice(prefix), ...argv.slice(0, prefix)];
   // Select the leaf without consuming positional arguments or flag values.
   const command = argv.slice(0, 2).join(" ") as keyof typeof searchCatalogue;
   if (!Object.hasOwn(searchCatalogue, command)) return undefined;
@@ -59,7 +53,8 @@ export function parseSearch(argv: string[]) {
     if (flags["--hashes-file"]) {
       let contents: string;
       try {
-        if (statSync(flags["--hashes-file"]).size > 1024 * 1024) return usage("Hashes file exceeds 1 MiB");
+        const file = statSync(flags["--hashes-file"]);
+        if (!file.isFile() || file.size > 1024 * 1024) return usage("Hashes input must be a regular file of at most 1 MiB");
         contents = readFileSync(flags["--hashes-file"], "utf8");
       } catch { return usage("Cannot read hashes file"); }
       const hashes = contents.trim().split(/\r?\n/).map((value) => value.trim());
@@ -104,7 +99,7 @@ export function parseSearch(argv: string[]) {
   return { command, flags, positional, body };
 }
 
-export async function searchCommand(parsed: NonNullable<ReturnType<typeof parseSearch>>, request: SearchRequest): Promise<Record<string, unknown>> {
+export async function searchCommand(parsed: NonNullable<ReturnType<typeof parseSearch>>, transport: Transport): Promise<Record<string, unknown>> {
   if (parsed.help) return parsed.help;
   const { command, flags, positional, body } = parsed;
   const experimental = Boolean(flags["--labs"]) || command.startsWith("search r");
@@ -113,10 +108,13 @@ export async function searchCommand(parsed: NonNullable<ReturnType<typeof parseS
   const selector = `${flags["--config"] ? ` --config '${flags["--config"].replaceAll("'", "'\"'\"'")}'` : ""}${flags["--profile"] ? ` --profile '${flags["--profile"].replaceAll("'", "'\"'\"'")}'` : ""}`;
   const resume = (id: string) => `Run hybrid-axi search results ${id}${selector}`;
   if (command === "hash show") {
-    const response = await request(flags["--labs"] ? "labsOverview" : "hashOverview", { params: { sha256: positional[0]! } });
-    if (response.status === 425 && experimental) return { experimental, sha256: positional[0], state: "pending", help: [`Run hybrid-axi hash show ${positional[0]} --labs${selector}`] };
-    const value = decode(z.looseObject({ sha256: z.string(), verdict: z.string().nullable().optional(), threat_score: z.number().nullable().optional(),
-      ...(experimental ? { report_ids: z.looseObject({ sandbox_job_ids: z.array(z.string()) }) } : { reports: z.array(z.string()) }) }), response.data);
+    let response;
+    try { response = await transport.request(flags["--labs"] ? "labsOverview" : "hashOverview", { pathParams: { sha256: positional[0]! } }); }
+    catch (error) {
+      if (error instanceof TransportError && error.error.status === 425 && experimental) return { experimental, sha256: positional[0], state: "pending", help: [`Run hybrid-axi hash show ${positional[0]} --labs${selector}`] };
+      throw error;
+    }
+    const value = experimental ? decode(labsOverview, response.body) : decode(stableOverview, response.body);
     const reports = experimental ? (value.report_ids as { sandbox_job_ids: string[] }).sandbox_job_ids : value.reports as string[];
     const empty = reports.length === 0 && value.verdict == null && value.threat_score == null;
     return { ...(experimental ? { experimental } : {}), overview: select(value, ["sha256", "verdict", "threat_score", "reports", "report_ids", "overall_status"]),
@@ -124,34 +122,34 @@ export async function searchCommand(parsed: NonNullable<ReturnType<typeof parseS
   }
   if (command === "hash search") {
     if (flags["--hash"]) {
-      const value = decode(hashResult, (await request("hashSearch", { params: { hash: flags["--hash"] } })).data);
+      const value = decode(hashResult, (await transport.request("hashSearch", { query: { hash: flags["--hash"] } })).body);
       return { ...select(value, ["sha256s", "reports"]), count: value.reports.length,
         ...(value.reports.length ? {} : { state: "empty", message: "No analysis reports found for this hash", help: [`Run hybrid-axi hash show ${value.sha256s[0] ?? "<sha256>"}${selector}`] }) };
     }
-    const value = decode(z.array(sample), (await request("hashesSearch", { body })).data);
+    const value = decode(z.array(sample), (await transport.request("hashesSearch", { body })).body);
     return { deprecated: true, results: value.map((row) => select(row, ["sha256", "verdict", "threat_score", "job_id"])), count: value.length,
       ...(value.length ? {} : { state: "empty", message: "No analysis reports found for the supplied hashes" }) };
   }
   if (command === "search terms") {
-    const value = decode(termsResult, (await request("termsSearch", { body })).data);
+    const value = decode(termsResult, (await transport.request("termsSearch", { body })).body);
     const count = value.reduce((total, row) => total + row.count, 0);
     return { searches: value.map((row) => ({ ...select(row, ["count", "search_terms"]), result: row.result.map((sample) => select(sample, ["sha256", "verdict", "threat_score", "job_id"])) })), count,
       ...(count ? {} : { state: "empty", message: "No samples match these search terms" }) };
   }
   let id = positional[0];
-  let response = command === "search run" ? await request("queryRun", { body }) : await request("queryResults", { params: { id: id! } });
+  let response = command === "search run" ? await transport.request("queryRun", { body }) : await transport.request("queryResults", { pathParams: { id: id! } });
   let start: Record<string, unknown>[] | undefined;
   if (command === "search run" && response.status === 202) {
-    start = decode(z.array(z.looseObject({ id: z.string().regex(/^[A-Za-z0-9_-]{1,256}$/) })).length(1), response.data);
+    start = decode(queryStart, response.body);
     id = start[0]!.id as string;
-    try { response = await request("queryResults", { params: { id } }); }
+    try { response = await transport.request("queryResults", { pathParams: { id } }); }
     catch (error) {
-      if (!(error instanceof AxiError)) throw error;
-      throw new AxiError(error.message, error.code, [...error.suggestions, resume(id)]);
+      if (!(error instanceof TransportError)) throw error;
+      throw new TransportError(error.error, [...error.help, resume(id)]);
     }
   }
-  const results = decode(queryResult, response.data);
-  const pending = results.some((row) => row.results === undefined);
+  const results = decode(queryResult, response.body);
+  const pending = results.some((row) => row.results === undefined || /^(pending|queued|running|processing)$/i.test(row.query_status));
   return { experimental, ...(id ? { id } : {}), ...(start && flags["--full"] ? { start } : {}),
     searches: results.map((row) => ({ ...select(row, ["number_of_results", "number_of_pages", "query_status"]),
       ...(row.results ? { results: row.results.map((sample) => select(sample, ["sha256", "verdict", "score", "submit_name"])) } : {}) })),

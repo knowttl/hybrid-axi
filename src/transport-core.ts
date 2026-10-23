@@ -9,6 +9,7 @@ export type OperationBinding = Readonly<{
   decoder: z.ZodType;
   query?: z.ZodType<Record<string, string | number | boolean | undefined>>;
   body?: z.ZodType;
+  bodyEncoding?: "form";
   retrySafe?: boolean;
   download?: boolean;
   requiredKeyLevel?: string;
@@ -125,7 +126,13 @@ export function constructTransport(options: { credential: Credential; origin?: s
       if (reviewed.body) {
         const decoded = reviewed.body.safeParse(input.body);
         if (!decoded.success) fail("VALIDATION_ERROR", "Invalid operation request body", operation);
-        body = JSON.stringify(decoded.data);
+        if (reviewed.bodyEncoding === "form") {
+          const form = new URLSearchParams();
+          for (const [name, value] of Object.entries(decoded.data as Record<string, unknown>)) {
+            if (value !== undefined) for (const entry of Array.isArray(value) ? value : [value]) form.append(name, String(entry));
+          }
+          body = form.toString();
+        } else body = JSON.stringify(decoded.data);
       } else if (input.body !== undefined) {
         fail("VALIDATION_ERROR", "This operation does not accept a request body", operation);
       }
@@ -147,7 +154,7 @@ export function constructTransport(options: { credential: Credential; origin?: s
         try {
           const response = await dependencies.fetch(url.href, {
             method: reviewed.method, headers: { "api-key": apiKey, "user-agent": "hybrid-axi", accept: reviewed.download ? "*/*" : "application/json",
-              ...(body !== undefined ? { "content-type": "application/json" } : {}) },
+              ...(body !== undefined ? { "content-type": reviewed.bodyEncoding === "form" ? "application/x-www-form-urlencoded" : "application/json" } : {}) },
             ...(body !== undefined ? { body } : {}), redirect: "error", signal: controller.signal,
           });
           rateLimits = {};

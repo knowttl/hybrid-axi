@@ -1,3 +1,6 @@
+import { z } from "zod";
+import { hashResult, labsOverview, queryResult, queryStart, sample, stableOverview, termsResult } from "./search-contracts.js";
+
 const common = {
   "--help": "Show help; default false",
   "--config": "Config path; default platform config",
@@ -37,11 +40,16 @@ export const searchCatalogue = {
 } as const;
 
 export const searchBindings = {
-  hashOverview: { api: "v2", method: "GET", path: "/overview/{sha256}", operationId: "9981be6445da2c7e117a48dbc551f5f6" },
-  labsOverview: { api: "labs", method: "GET", path: "/sample/{sha256}/overview", operationId: "adc7c9ebb1c46f92f13f1a4e8dd0c9c3" },
-  hashSearch: { api: "v2", method: "GET", path: "/search/hash", operationId: "b972462c6d0d664b328b10b9e91da4c9" },
-  hashesSearch: { api: "v2", method: "POST", path: "/search/hashes", operationId: "2f3268b2522562c9d49936fae22ea6c7" },
-  termsSearch: { api: "v2", method: "POST", path: "/search/terms", operationId: "5d7230cfa76c541818188ff3911bb6a2" },
-  queryRun: { api: "labs", method: "POST", path: "/search/query/run", operationId: "60367d88a168e925cc6be05b55565ab6", singleSend: true },
-  queryResults: { api: "labs", method: "GET", path: "/search/query/{id}/results", operationId: "a385738306b200f7387851e538fe2e98" },
+  hashOverview: { effect: "read", method: "GET", path: "/api/v2/overview/{sha256}", operationId: "9981be6445da2c7e117a48dbc551f5f6", decoder: stableOverview },
+  labsOverview: { effect: "read", method: "GET", path: "/api/labs/sample/{sha256}/overview", operationId: "adc7c9ebb1c46f92f13f1a4e8dd0c9c3", decoder: labsOverview },
+  hashSearch: { effect: "read", method: "GET", path: "/api/v2/search/hash", operationId: "b972462c6d0d664b328b10b9e91da4c9", decoder: hashResult,
+    query: z.strictObject({ hash: z.string().regex(/^(?:[a-f\d]{32}|[a-f\d]{40}|[a-f\d]{64}|[a-f\d]{128})$/i) }) },
+  hashesSearch: { effect: "read", method: "POST", path: "/api/v2/search/hashes", operationId: "2f3268b2522562c9d49936fae22ea6c7", decoder: z.array(sample),
+    body: z.strictObject({ "hashes[]": z.array(z.string().regex(/^(?:[a-f\d]{32}|[a-f\d]{40}|[a-f\d]{64})$/i)).min(1) }), bodyEncoding: "form" },
+  termsSearch: { effect: "read", method: "POST", path: "/api/v2/search/terms", operationId: "5d7230cfa76c541818188ff3911bb6a2", decoder: termsResult,
+    body: z.strictObject(Object.fromEntries(termNames.map((name) => [name, name === "verdict" ? z.number().int().min(1).max(5).optional()
+      : name === "port" ? z.number().int().min(0).max(65535).optional() : z.string().trim().min(1).optional()]))).refine((value) => Object.values(value).some((entry) => entry !== undefined)), bodyEncoding: "form" },
+  queryRun: { effect: "read", method: "POST", path: "/api/labs/search/query/run", operationId: "60367d88a168e925cc6be05b55565ab6", decoder: z.union([queryResult, queryStart]), retrySafe: false,
+    body: z.strictObject({ query: z.string().trim().min(1), size: z.number().int().min(1).max(200), page: z.number().int().positive(), date_from: z.iso.date().optional(), date_to: z.iso.date().optional() }) },
+  queryResults: { effect: "read", method: "GET", path: "/api/labs/search/query/{id}/results", operationId: "a385738306b200f7387851e538fe2e98", decoder: queryResult },
 } as const;
