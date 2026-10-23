@@ -43,8 +43,7 @@ Use affected tests plus a fixed critical CLI/safety baseline; shared infrastruct
 Fail closed when test selection cannot determine the merge base or required baseline.
 Keep the development commands in README accurate; do not claim checks passed without running them.
 Verify specification hashes, complete ledger coverage and generated declarations offline.
-After building, use `pnpm run docs:generate` to regenerate the README command table, command reference and `skills/hybrid-axi/SKILL.md` from the catalogue.
-`pnpm test` checks generated documentation freshness alongside specification freshness; `pnpm run docs:check` runs that check directly.
+Follow the [README development commands](README.md#development) to regenerate catalogue documentation and check its freshness.
 Do not fetch floating specs or call the real API during validation.
 Live acceptance is separate, read-only, uses a supplied test key on an authorized host, and never submits samples or quick scans.
 

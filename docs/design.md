@@ -50,7 +50,8 @@ The session hides operation binding, credential resolution, pagination, deadline
 Keep related domain functions together; avoid forwarding wrappers per endpoint.
 One typed catalogue owns leaf grammar, flags, effects, operation IDs, method/path, request schemas, response decoders, default fields, auth notes and evidence.
 The ledger records evidence and exclusions; it never grants executable access by itself.
-Generate help, command reference, installable skill and host-facing inventory from the catalogue.
+Generate help, command reference and installable skill from the catalogue.
+The non-executable capability inventory comes from the pinned specifications and this document's operation ledger through `scripts/specs.mjs`.
 Use `bin/`, `src/`, `test/`, `scripts/`, `inventory/`, `specs/`, `skills/hybrid-axi/` and strict ESM packaging consistent with vectra-axi.
 Ship `axi-credential.schema.json` and an importable reviewed catalogue for later hosted use.
 

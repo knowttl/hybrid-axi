@@ -21,7 +21,8 @@ npx -y @knowttl/hybrid-axi --help
 
 Until publication, use the [development commands](#development) to build and run `node bin/hybrid-axi.js`.
 Home, setup, profile discovery and authentication status are local; explicit API commands use the selected profile.
-Output is TOON on stdout, including structured errors; exit codes are 0 for success, 1 for runtime failure and 2 for invalid input.
+Command output is TOON on stdout, including structured errors; bare `--version`, `-v` and `-V` print only the package version.
+Exit codes are 0 for success, 1 for runtime failure and 2 for invalid input.
 
 For ambient local profile context, explicitly opt in after installing the CLI:
 
@@ -35,7 +36,8 @@ Project scope writes `.claude`, `.codex` and `.opencode` in the current director
 Both scopes enable Codex's hooks feature in user configuration.
 User configuration honors `CLAUDE_CONFIG_DIR`, `CODEX_HOME` and `XDG_CONFIG_HOME` for the respective agent.
 Setup preserves unrelated configuration, repairs moved executable paths and makes repeated installs a no-op.
-The hook uses a PATH-verified binary name when it resolves to this installation, otherwise its quoted absolute path.
+On POSIX, the hook uses a PATH-verified binary name when it resolves to this installation, otherwise its quoted absolute path.
+On Windows, Claude Code uses Node with the installed entry as an argument; Codex uses a PowerShell command that invokes Node with that entry.
 OpenCode runs the installed entry directly through Node.
 Restart the agent session after setup.
 Context uses `HYBRID_AXI_CONFIG` and `HYBRID_AXI_PROFILE` from the session environment; it never makes an API call or reads a credential file.
