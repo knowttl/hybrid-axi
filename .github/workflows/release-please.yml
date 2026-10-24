@@ -3,6 +3,12 @@ name: release-please
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing GitHub release tag to publish (for example v0.1.1)
+        required: true
+        type: string
 
 permissions: {}
 
@@ -14,9 +20,27 @@ jobs:
       pull-requests: write
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
-      tag_name: ${{ steps.release.outputs.tag_name }}
+      tag_name: ${{ steps.existing-release.outputs.tag_name || steps.release.outputs.tag_name }}
     steps:
+      - name: Validate existing GitHub release
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        uses: actions/github-script@v8
+        id: existing-release
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        with:
+          script: |
+            const tag = process.env.RELEASE_TAG;
+            const { data: release } = await github.rest.repos.getReleaseByTag({
+              ...context.repo,
+              tag,
+            });
+            if (release.tag_name !== tag || release.draft) {
+              throw new Error('Tag must name an existing published GitHub release');
+            }
+            core.setOutput('tag_name', tag);
       - uses: googleapis/release-please-action@v4
+        if: ${{ github.event_name == 'push' }}
         id: release
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -24,7 +48,7 @@ jobs:
   publish:
     needs: release-please
     # Enable only after the initial host publication and npm trusted-publisher setup.
-    if: ${{ needs.release-please.outputs.release_created == 'true' && vars.NPM_TRUSTED_PUBLISHING == 'true' }}
+    if: ${{ (github.event_name == 'workflow_dispatch' || needs.release-please.outputs.release_created == 'true') && vars.NPM_TRUSTED_PUBLISHING == 'true' }}
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -32,9 +56,20 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ needs.release-please.outputs.tag_name }}
+          ref: refs/tags/${{ needs.release-please.outputs.tag_name }}
           fetch-depth: 0
           persist-credentials: false
+      - name: Validate package version against release tag
+        env:
+          RELEASE_TAG: ${{ needs.release-please.outputs.tag_name }}
+        run: |
+          node --input-type=module -e '
+            import { readFileSync } from "node:fs";
+            const { version } = JSON.parse(readFileSync("package.json", "utf8"));
+            if (process.env.RELEASE_TAG !== `v${version}`) {
+              throw new Error("Release tag does not match package.json version");
+            }
+          '
       - uses: actions/setup-node@v7
         with:
           node-version: "24"
