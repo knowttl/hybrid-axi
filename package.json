@@ -1,6 +1,6 @@
 {
   "name": "@knowttl/hybrid-axi",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Investigate Hybrid Analysis with bounded reads and explicitly guarded writes",
   "license": "MIT",
   "type": "module",
