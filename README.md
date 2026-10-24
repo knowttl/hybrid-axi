@@ -3,7 +3,6 @@
 Agent-ergonomic CLI for the Hybrid Analysis API, read-only by default, with compact TOON output and explicitly guarded submissions, YARA changes and malware downloads.
 
 This repository ships local credential commands, bounded `doctor` and `quota` reads, hash overviews and searches, experimental Labs queries and hunting, report reads and normal artifacts, guarded malware downloads, feeds, system discovery, reviewed raw reads, guarded sandbox submissions and quick scans.
-No npm release is available yet.
 The [command reference](docs/commands.md) documents every shipped leaf, flag and example from the executable catalogue.
 The [design](docs/design.md) defines the complete stable/Labs operation ledger, credentials, safety boundaries and ordered implementation slices.
 The tool-specific no-mistakes configuration establishes offline validation before feature work.
@@ -11,7 +10,7 @@ The tool-specific no-mistakes configuration establishes offline validation befor
 ## Installation and agent integration
 
 Requires Node.js 22.12 or later.
-After the first npm publication, install globally or run without a global install:
+Install globally or run without a global install:
 
 ```sh
 npm install -g @knowttl/hybrid-axi
@@ -19,7 +18,7 @@ hybrid-axi --version
 npx -y @knowttl/hybrid-axi --help
 ```
 
-Until publication, use the [development commands](#development) to build and run `node bin/hybrid-axi.js`.
+For a source checkout, use the [development commands](#development) to build and run `node bin/hybrid-axi.js`.
 Home, setup, profile discovery and authentication status are local; explicit API commands use the selected profile.
 Command output is TOON on stdout, including structured errors; bare `--version`, `-v` and `-V` print only the package version.
 Exit codes are 0 for success, 1 for runtime failure and 2 for invalid input.
@@ -356,11 +355,12 @@ The [pinned sources](inventory/specs.json) and [operation ledger](docs/design.md
 Release Please prepares version and changelog changes on `main`.
 The release workflow is limited to release management, build, artifact freshness, packing and npm publication with provenance; there is no pull-request test workflow.
 All tests and public-data review run locally before delivery.
-Nothing is published by this release-surface change.
-The first npm publication runs from the authorized main-branch host after separate read-only acceptance.
-The owner then configures npm trusted publishing for `knowttl/hybrid-axi`, workflow `release-please.yml`, and enables the repository variable `NPM_TRUSTED_PUBLISHING=true`.
-Until that explicit setup, the workflow's publication job is disabled.
-Subsequent release tags can publish the packed artifact through GitHub OIDC with `id-token: write` and `npm publish --provenance`, without a stored npm token.
+Publication requires npm trusted publishing configured for `knowttl/hybrid-axi`, workflow `release-please.yml`, and the repository variable `NPM_TRUSTED_PUBLISHING=true`.
+Pushes to `main` publish only when Release Please creates a release.
+To publish an existing GitHub release whose npm publication was skipped, open Actions, select `release-please`, choose Run workflow on `main`, and supply its exact `tag`, for example `v0.1.1`.
+Manual dispatch validates that the tag names an existing, non-draft GitHub release before the publish job can run; it does not bump the version or create another release.
+Both paths use the same gated publish job: check out the tag, require it to equal `v` plus the checked-out `package.json` version, install dependencies, build, check specification and documentation freshness, and pack the release.
+The packed artifact is published through GitHub OIDC with `id-token: write` and `npm publish --provenance`, without a stored npm token.
 
 artium-axi integration follows npm publication in a separate PR, pinned to the released package and using a managed `api-key` for `hybrid-analysis.com`.
 Submissions, YARA mutations, consuming matches and guarded downloads stay off by default.
