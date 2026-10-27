@@ -12,6 +12,14 @@ import { fakeHttpsHybrid, fakeTransport, keyBody, quotaBody, syntheticKey, type 
 const id = "a".repeat(64) + ":120";
 const summary = { job_id: "synthetic-job", state: "SUCCESS", verdict: "malicious", threat_score: 80 };
 
+test.each(["C:/Program Files/Git/report/job/summary", "d:/report/job/summary"])("raw API explains Git Bash path conversion: %s", async (path) => {
+  const result = await cli(["api", "get", path], [], { noCredentials: true });
+  expect(result.code).toBe(2);
+  expect(result.output).toMatchObject({ code: "VALIDATION_ERROR",
+    help: ["Git Bash rewrote the leading slash. Pass the path without it (report/<id>/summary) or set MSYS_NO_PATHCONV=1"] });
+  expect(result.requests).toHaveLength(0);
+});
+
 async function cli(argv: string[], replies: Reply[], options: {
   before?: (directory: string) => void;
   inspect?: (directory: string) => void;

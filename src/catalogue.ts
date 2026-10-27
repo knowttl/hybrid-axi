@@ -61,7 +61,7 @@ export const catalogue = {
   },
   doctor: {
     effect: "read",
-    description: "Verify credentials and read key level, submission quota and observed limit headers; other access is unverified",
+    description: "Verify credentials, key level, quota and one read per system/report/search/feed/hash group; each probe uses API quota; denied operations are permission-denied",
     flags: { "--help": "Show help; default false", "--config": "Config path; default HYBRID_AXI_CONFIG or platform config", "--profile": "Profile name; default profile precedence" },
     examples: ["hybrid-axi doctor", "hybrid-axi doctor --profile example"],
   },

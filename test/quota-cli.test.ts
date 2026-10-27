@@ -6,7 +6,23 @@ import { expect, test } from "vitest";
 import { main } from "../src/cli.js";
 import { constructTransport } from "../src/transport-core.js";
 import { transportBindings } from "../src/catalogue.js";
-import { fakeHttpsHybrid, keyBody, quotaBody, syntheticKey } from "./support/fake-hybrid.js";
+import { fakeHttpsHybrid, fakeTransport, keyBody, quotaBody, syntheticKey } from "./support/fake-hybrid.js";
+import { createSession } from "../src/session.js";
+
+test("doctor reports every denied group and continues probing", async () => {
+  const fake = fakeTransport([{ body: keyBody }, { body: quotaBody },
+    { body: { sandbox: "1", api: "2" } }, { status: 403 }, { status: 403 }, { body: [] }, { status: 403 },
+  ], { credential: { apiKey: syntheticKey, redact: (value) => value } });
+  const result = await createSession(fake.transport).doctor();
+  expect(result).toMatchObject({ status: "permission-denied", probes: [
+    { group: "system", operation: "system version", status: "ok" },
+    { group: "report", operation: "report state", status: "permission-denied" },
+    { group: "search", operation: "termsSearch", status: "permission-denied" },
+    { group: "feed", operation: "feed detonation", status: "ok" },
+    { group: "hash", operation: "hashSearch", status: "permission-denied" },
+  ] });
+  expect(fake.requests).toHaveLength(7);
+});
 
 test.each(["doctor", "quota"])("%s resolves the selected private SecretRef and reports redacted quota over HTTPS", async (command) => {
   const directory = mkdtempSync(join(tmpdir(), "hybrid-axi-quota-"));
@@ -26,7 +42,9 @@ test.each(["doctor", "quota"])("%s resolves the selected private SecretRef and r
     "X-RateLimit-Remaining": { value: "18" }, "X-RateLimit-Reset": { value: "120" } };
   const fake = await fakeHttpsHybrid([{ body: keyBody, headers: { ...diagnosticHeaders, "Api-Limits": JSON.stringify({ remaining: 8,
     echoed: `${syntheticKey} ${encodeURIComponent(syntheticKey)}`, token: "synthetic-other-token" }) } },
-  { body: quotaBody, headers: diagnosticHeaders }]);
+  { body: quotaBody, headers: diagnosticHeaders },
+  ...(command === "doctor" ? [{ body: { sandbox: "1", api: "2" } }, { status: 404 },
+    { body: { count: 0, result: [] } }, { body: [] }, { body: { sha256s: [], reports: [] } }] : [])]);
   let stdout = "";
   try {
     await main([command, "--config", config, "--profile", "example"], {
@@ -47,7 +65,11 @@ test.each(["doctor", "quota"])("%s resolves the selected private SecretRef and r
     } });
     expect(stdout).not.toContain("synthetic-cookie");
     expect(stdout).not.toContain("unrelated-value");
-    expect(fake.requests).toHaveLength(2);
+    expect(fake.requests).toHaveLength(command === "doctor" ? 7 : 2);
+    if (command === "doctor") expect(decode(stdout)).toMatchObject({ status: "ok", probes: [
+      { group: "system", status: "ok" }, { group: "report", status: "not-found" },
+      { group: "search", status: "ok" }, { group: "feed", status: "ok" }, { group: "hash", status: "ok" },
+    ] });
     expect(fake.requests[0]!.headers["api-key"]).toBe(syntheticKey);
   } finally { await fake.close(); rmSync(directory, { recursive: true, force: true }); }
 });

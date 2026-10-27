@@ -20,7 +20,7 @@ Gzip/ZIP delivery does not guarantee password protection.
 | `hybrid-axi api get` | read | Reviewed JSON GET only: same decoders, redaction, fields and bounds as named reads; rejects binary, mixed-effect, consuming, refresh and unbound routes |
 | `hybrid-axi auth status` | read | Verify local SecretRef availability and file protections without HTTP |
 | `hybrid-axi config path` | read | Show selected config and platform state paths without reading files |
-| `hybrid-axi doctor` | read | Verify credentials and read key level, submission quota and observed limit headers; other access is unverified |
+| `hybrid-axi doctor` | read | Verify credentials, key level, quota and one read per system/report/search/feed/hash group; each probe uses API quota; denied operations are permission-denied |
 | `hybrid-axi feed abuse` | read | Read one page of qualified-removal hashes |
 | `hybrid-axi feed detonation` | read | Read the most recent report feed, capped upstream at 250 |
 | `hybrid-axi feed latest` | read | Deprecated latest feed, at most 250 reports from 24h; use feed detonation for the current feed |
@@ -52,7 +52,7 @@ Gzip/ZIP delivery does not guarantee password protection.
 | `hybrid-axi report state` | read | Show submission state |
 | `hybrid-axi search results` | read | Experimental Labs results for a known query ID; never starts a query |
 | `hybrid-axi search run` | read | Experimental Labs query: start once, then fetch asynchronous results once; resume pending queries by ID |
-| `hybrid-axi search terms` | read | Search using at least one documented named filter |
+| `hybrid-axi search terms` | read | Search using at least one documented named filter; count is upstream total, returned is result rows, complete is false when fewer rows return. Hybrid Analysis does not page search terms; narrow with --date-from/--date-to |
 | `hybrid-axi setup` | read | Show a read-only config template and SecretRef setup guidance without writing files |
 | `hybrid-axi setup hooks` | write | Explicitly install or repair local-only Claude Code, Codex and OpenCode session integrations; no API calls |
 | `hybrid-axi submit dropped-file` | write | Preview analysis of an exact dropped SHA256 from a report; the API accepts no environment override |
@@ -83,9 +83,9 @@ Reviewed JSON GET only: same decoders, redaction, fields and bounds as named rea
 | `--labs` | Select experimental Labs API; default stable |
 
 ```sh
-hybrid-axi api get /report/<id>/summary
-hybrid-axi api get '/report/<id>/memory-dump/extracted-strings?filename=<name>'
-hybrid-axi api get /sample/<sha256>/overview --labs
+hybrid-axi api get report/<id>/summary
+hybrid-axi api get 'report/<id>/memory-dump/extracted-strings?filename=<name>'
+hybrid-axi api get sample/<sha256>/overview --labs
 ```
 
 ## auth status
@@ -126,7 +126,7 @@ hybrid-axi config path --config <path>
 
 Effect: **read**.
 
-Verify credentials and read key level, submission quota and observed limit headers; other access is unverified
+Verify credentials, key level, quota and one read per system/report/search/feed/hash group; each probe uses API quota; denied operations are permission-denied
 
 | Flag | Meaning |
 |---|---|
@@ -801,7 +801,7 @@ hybrid-axi search run --query 'score:80+' --size 20 --page 2
 
 Effect: **read**.
 
-Search using at least one documented named filter
+Search using at least one documented named filter; count is upstream total, returned is result rows, complete is false when fewer rows return. Hybrid Analysis does not page search terms; narrow with --date-from/--date-to
 
 | Flag | Meaning |
 |---|---|

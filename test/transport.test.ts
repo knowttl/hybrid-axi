@@ -41,16 +41,23 @@ test("quota decodes documented usage and observed limit headers over verified HT
   } finally { await fake.close(); }
 });
 
-test("doctor limits its claim to authentication and quota", async () => {
-  const fake = fakeTransport([{ body: keyBody }, { body: quotaBody }], { credential });
+test("doctor leaves missing targets and unprobed operations unverified", async () => {
+  const fake = fakeTransport([{ body: keyBody }, { body: quotaBody }, { body: { sandbox: "1", api: "2" } },
+    { status: 404 }, { body: { count: 0, result: [] } }, { body: [] }, { body: { sha256s: [], reports: [] } }], { credential });
   expect(await createSession(fake.transport).doctor()).toMatchObject({ status: "ok", keyLevel: "restricted",
-    scope: "Authentication and quota only; access to other operations is unverified" });
+    scope: "One read per command group; other operations remain unverified. A not-found probe does not establish access." });
 });
 
 test("doctor never retries an explicit transient failure", async () => {
   const fake = fakeTransport([{ status: 503, body: { message: "Unavailable" } }], { credential });
   await expect(createSession(fake.transport).doctor()).rejects.toMatchObject({ error: { code: "UPSTREAM_ERROR", status: 503 } });
   expect(fake.requests).toHaveLength(1);
+});
+
+test("doctor never retries a transient group probe failure", async () => {
+  const fake = fakeTransport([{ body: keyBody }, { body: quotaBody }, { status: 503 }], { credential });
+  await expect(createSession(fake.transport).doctor()).rejects.toMatchObject({ error: { operation: "system version", status: 503 } });
+  expect(fake.requests).toHaveLength(3);
 });
 
 test("restricted download denial names the required level and account vetting", async () => {
