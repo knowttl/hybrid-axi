@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.2](https://github.com/knowttl/hybrid-axi/compare/v0.1.1...v0.1.2) (2026-10-27)
+
+
+### Bug Fixes
+
+* allow publishing existing releases through manual dispatch ([#18](https://github.com/knowttl/hybrid-axi/issues/18)) ([57bc532](https://github.com/knowttl/hybrid-axi/commit/57bc532013d8ed4080f5260b5462298be83538b5))
+* improve doctor probes, search completeness and API path hints ([#20](https://github.com/knowttl/hybrid-axi/issues/20)) ([589e3fe](https://github.com/knowttl/hybrid-axi/commit/589e3fe3950651ef4e4edb1a31ab35f18c0ebc73))
+
 ## [0.1.1](https://github.com/knowttl/hybrid-axi/compare/v0.1.0...v0.1.1) (2026-10-23)
 
 
