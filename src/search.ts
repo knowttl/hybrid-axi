@@ -149,7 +149,12 @@ export async function searchCommand(parsed: NonNullable<ReturnType<typeof parseS
   if (command === "search terms") {
     const value = decode(termsResult, (await transport.request("termsSearch", { body })).body);
     const count = value.reduce((total, row) => total + row.count, 0);
-    return { searches: value.map((row) => ({ ...select(row, ["count", "search_terms"]), result: row.result.map((sample) => select(sample, ["sha256", "verdict", "threat_score", "job_id"])) })), count,
+    const returned = value.reduce((total, row) => total + row.result.length, 0);
+    return { searches: value.map((row) => ({ ...select(row, ["search_terms"]), count: row.count, returned: row.result.length,
+      ...(row.result.length < row.count ? { complete: false } : {}),
+      result: row.result.map((sample) => select(sample, ["sha256", "verdict", "threat_score", "job_id"])) })), count, returned,
+      ...(value.some((row) => row.result.length < row.count) ? { complete: false } : {}),
+      help: ["Hybrid Analysis does not page search terms; narrow with --date-from/--date-to"],
       ...(count ? {} : { state: "empty", message: "No samples match these search terms" }) };
   }
   let id = positional[0];

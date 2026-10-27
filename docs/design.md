@@ -152,11 +152,11 @@ Additional command contracts are:
 |---|---|---|
 | `home` / no args | Local profile, binary name only (no path), description and effective policy; no network. | profile, origin, readOnly, setup state |
 | `auth status` | Local SecretRef availability and protection checks; no key value or HTTP. | profile, source kind, available |
-| `doctor` | Bounded `/key/current` and `/key/submission-quota` reads, no retries or samples. | keyLevel, quota, rateLimits |
+| `doctor` | Key/quota plus one read per system/report/search/feed/hash group, at most seven requests without retries or samples; each probe uses API quota. | keyLevel, quota, rateLimits, per-operation probes with permission-denied rows |
 | `quota` | Same two key operations, body usage plus observed limit headers. | keyLevel, quota, rateLimits |
 | `hash show <sha256>` | Stable overview; `--labs` selects experimental sample overview; report ids locally limited by `--limit` (default 100). | sha256, verdict, threat_score, reports/report_ids |
 | `hash search` | Exactly one `--hash` or `--hashes-file`; bulk POST only for the latter. | See [shipped output](../README.md#hash-and-search). |
-| `search terms` | Documented named filters only; strict nonempty input. | sha256, verdict, threat_score, report ID |
+| `search terms` | Documented named filters only; strict nonempty input; no paging, limit or cursor; always advise narrowing dates. | sha256, verdict, threat_score, report ID, upstream count, returned rows, complete: false when incomplete |
 | `search run` | Experimental Labs query, `--query`, `--size` (default 50, max 200), `--page`, `--date-from`, `--date-to`; starts once and retrieves results within the deadline. | sha256, verdict, score, query status |
 | `search results <id>` | Experimental resumable results read, never reruns the query. | See [shipped output](../README.md#hash-and-search). |
 | `report show/state <id>` | Job ID or `sha256:environmentId`; summary and state respectively. | See [report field selections](../src/report-catalogue.ts). |
@@ -169,6 +169,7 @@ Additional command contracts are:
 | `api get <path>` | Relative API path plus `--labs` when appropriate; reviewed read-only GET bindings, validated query schema and normal output/transport policy. | Operation-specific fields |
 
 `api get` refuses binary routes, mixed-effect `/file/{type}`, refresh, consuming matches, unbound paths, full URLs and all writes; the HTTP method alone is insufficient authorization.
+Drive-prefixed paths get a Git Bash conversion hint before credential resolution; examples omit the leading slash.
 Raw reads cannot change credentials, origin, headers or budgets.
 `hash search --hashes-file` uses the deprecated `/search/hashes` operation because the requested bulk behavior has no equivalent stable bulk replacement in this snapshot; document that warning.
 See [README's hunting contract](../README.md#experimental-hunting) for JSON body files, stdin and size bounds.
@@ -181,7 +182,7 @@ See README's [hash and search](../README.md#hash-and-search) and [report, feed a
 Preview long text at 1,000 characters, include original length and offer `--full` only when truncation occurs.
 Lists expose returned count, upstream total when known, completeness and continuation separately from TOON array headers.
 Unknown totals stay unknown; truncation always has a command or selector to see more.
-Default list limit is 100 unless the upstream bound is lower; never invent pagination parameters for an unpaged API.
+For commands with a local list limit, the default is 100 unless the upstream bound is lower; never invent pagination parameters for an unpaged API.
 Labs synchronous search supports 1-based pages; asynchronous results are bounded by the submitted size and cannot be treated as the full database.
 Budget stops preserve validated rows and resumable query IDs/cursors with `complete:false`; partial errors exit 1.
 Hints preserve profile and relevant selectors and use placeholders for unknown IDs.
@@ -399,9 +400,9 @@ Apply the recorded Q1/Q2 decisions in the affected slices; no design approval al
 |---|---|---|---|
 | T1 | Design | Scaffold: package, strict TS/ESM, pnpm, bin/src/test layout, catalogue skeleton, version fast path, generated spec types and offline spec checks. Land tool-specific `.no-mistakes.yaml` with separate prepare/test/lint commands, private-data review rules and auto-merge on green on main before feature slices. | Offline build/lint, hash and 62-operation inventory checks, packed version/help baseline, no network; configuration consumes real hybrid-axi commands and targets `knowttl/hybrid-axi` with base `main`. |
 | T2 | T1 | Profiles, env/file SecretRefs, private-file handling, redaction, credential schema and local home/auth/setup/profile/config commands. | Precedence, file protections on both platform branches, no argv key, key-current/user stripping, no network. |
-| T3 | T2 | Closed transport, errors, budgets, quota, doctor, fake upstream and process-tree network guard. | Restricted/unknown key-level 403, vetted-download advice, quota/header parsing, redirects, timeout no replay, malformed bodies and synthetic secret sentinels. |
-| T4 | T3 | Hash show/search, search terms, Labs overview and sync/async query run/results. | Positive/empty/pending/denied fixtures, both query modes, bounded result fetching/resume, no duplicate start, unknown-field passthrough. |
-| T5 | T3 | Report summary/state, children, memory metadata, normal report artifacts, feeds, system and reviewed raw reads. | Exact operation binding, deprecated-route disclosure, one atomic bounded artifact per call, no sensitive/raw bypass, counts/truncation. |
+| T3 | T2 | Closed transport, errors, budgets, quota, doctor, fake upstream and process-tree network guard. | Restricted/unknown key-level 403, per-group doctor denial rows and continued probes, vetted-download advice, quota/header parsing, redirects, timeout no replay, malformed bodies and synthetic secret sentinels. |
+| T4 | T3 | Hash show/search, search terms, Labs overview and sync/async query run/results. | Positive/empty/pending/denied fixtures, term count/returned/incompleteness and date-narrowing guidance, both query modes, bounded result fetching/resume, no duplicate start, unknown-field passthrough. |
+| T5 | T3 | Report summary/state, children, memory metadata, normal report artifacts, feeds, system and reviewed raw reads. | Exact operation binding, Git Bash path-conversion recovery, deprecated-route disclosure, one atomic bounded artifact per call, no sensitive/raw bypass, counts/truncation. |
 | T6 | T3 | Shared write coordinator, immutable scope, preview/execute/exact-confirm and durable journal. | Default/forced read-only, target digest, wrong confirmation, journal failure, single-send timeout and audit/read-back guidance. |
 | T7 | T4, T6 | Sandbox file/URL submissions, dropped-file submit, quick-scan conversion, plus file/URL quick scans and status as explicit read exceptions. | Fake uploads only, community-visibility preview, exact sample/environment target, quick-scan transmission help, no automatic replay or live submissions. |
 | T8 | T5, T6 | Guarded sample, dropped archive and process-memory downloads. | Exact ID/type/destination confirmation, live-malware and unverified-protection help/preview, private atomic bytes unchanged, no extraction/encryption/repackaging/stdout, restricted-key errors. |

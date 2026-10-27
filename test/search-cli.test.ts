@@ -13,6 +13,22 @@ const overview = { sha256, verdict: "malicious", threat_score: 90, reports: ["sy
 const match = { sha256, verdict: "malicious", submit_name: "synthetic.exe" };
 const completed = [{ query_status: "finished", number_of_results: 1, number_of_pages: 1, results: [match] }];
 
+test.each([{ flags: [] }, { flags: ["--full"] }, { flags: ["--fields", "sha256"] }])("terms discloses incomplete upstream results with view flags $flags", async ({ flags }) => {
+  const result = await cli(["search", "terms", "--filename", "synthetic.exe", ...flags], [{ body: { count: 10, result: [match] } }]);
+  expect(result.code).toBe(0);
+  expect(result.output).toMatchObject({ count: 10, returned: 1, complete: false,
+    searches: [{ count: 10, returned: 1, complete: false, result: [{ sha256 }] }],
+    help: ["Hybrid Analysis does not page search terms; narrow with --date-from/--date-to"] });
+});
+
+test.each([0, 1])("terms always explains the paging restriction for %i complete results", async (count) => {
+  const result = await cli(["search", "terms", "--filename", "synthetic.exe"], [{ body: { count, result: count ? [match] : [] } }]);
+  expect(result.code).toBe(0);
+  expect(result.output).toMatchObject({ count, returned: count,
+    help: ["Hybrid Analysis does not page search terms; narrow with --date-from/--date-to"] });
+  expect(result.output).not.toHaveProperty("complete", false);
+});
+
 test("terms accepts the observed object envelope and nullable sample fields", async () => {
   const body = { search_terms: [{ id: "filename", value: "synthetic.com" }], count: 1, result: [{
     sha256, verdict: null, av_detect: null, threat_score: null, vx_family: null, job_id: "synthetic-job",

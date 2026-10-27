@@ -57,6 +57,9 @@ export function parseReport(argv: string[]) {
     operation = command === "hash file" ? "hash-download-bin" : guarded ? guardedArtifacts[type as keyof typeof guardedArtifacts].operation : `report artifact ${type}`;
   } else if (command === "api get") {
     const path = positional[0]!;
+    if (/^[A-Za-z]:\//.test(path)) throw new AxiError("API path was converted to a Windows drive path", "VALIDATION_ERROR", [
+      "Git Bash rewrote the leading slash. Pass the path without it (report/<id>/summary) or set MSYS_NO_PATHCONV=1",
+    ]);
     const [rawPathname, queryText] = path.split("?");
     const pathname = rawPathname && !rawPathname.startsWith("/") ? `/${rawPathname}` : rawPathname;
     try { decodeURIComponent(queryText ?? ""); } catch { usage("Invalid API query encoding"); }

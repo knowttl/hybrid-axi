@@ -26,7 +26,7 @@ export const searchCatalogue = {
   },
   "search terms": {
     effect: "read",
-    description: "Search using at least one documented named filter",
+    description: "Search using at least one documented named filter; count is upstream total, returned is result rows, complete is false when fewer rows return. Hybrid Analysis does not page search terms; narrow with --date-from/--date-to",
     flags: { ...common, ...Object.fromEntries(termNames.map((name) => [`--${name.replaceAll("_", "-")}`, "Optional nonempty filter; default omitted"])) },
     examples: ["hybrid-axi search terms --filename invoice.exe", "hybrid-axi search terms --verdict 5 --port 443"],
   },

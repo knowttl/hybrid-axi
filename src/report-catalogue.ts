@@ -96,5 +96,5 @@ export const reportCatalogue: Record<string, { effect: "read" | "write" | "read/
   "api get": { description: "Reviewed JSON GET only: same decoders, redaction, fields and bounds as named reads; rejects binary, mixed-effect, consuming, refresh and unbound routes",
     effect: "read",
     flags: { ...common, ...list, "--labs": "Select experimental Labs API; default stable" },
-    examples: ["hybrid-axi api get /report/<id>/summary", "hybrid-axi api get '/report/<id>/memory-dump/extracted-strings?filename=<name>'", "hybrid-axi api get /sample/<sha256>/overview --labs"] },
+    examples: ["hybrid-axi api get report/<id>/summary", "hybrid-axi api get 'report/<id>/memory-dump/extracted-strings?filename=<name>'", "hybrid-axi api get sample/<sha256>/overview --labs"] },
 };

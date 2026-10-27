@@ -63,7 +63,7 @@ Quick scans are read exceptions that transmit data, and `setup hooks` writes onl
 | `hybrid-axi api get` | read | Reviewed JSON GET only: same decoders, redaction, fields and bounds as named reads; rejects binary, mixed-effect, consuming, refresh and unbound routes |
 | `hybrid-axi auth status` | read | Verify local SecretRef availability and file protections without HTTP |
 | `hybrid-axi config path` | read | Show selected config and platform state paths without reading files |
-| `hybrid-axi doctor` | read | Verify credentials and read key level, submission quota and observed limit headers; other access is unverified |
+| `hybrid-axi doctor` | read | Verify credentials, key level, quota and one read per system/report/search/feed/hash group; each probe uses API quota; denied operations are permission-denied |
 | `hybrid-axi feed abuse` | read | Read one page of qualified-removal hashes |
 | `hybrid-axi feed detonation` | read | Read the most recent report feed, capped upstream at 250 |
 | `hybrid-axi feed latest` | read | Deprecated latest feed, at most 250 reports from 24h; use feed detonation for the current feed |
@@ -95,7 +95,7 @@ Quick scans are read exceptions that transmit data, and `setup hooks` writes onl
 | `hybrid-axi report state` | read | Show submission state |
 | `hybrid-axi search results` | read | Experimental Labs results for a known query ID; never starts a query |
 | `hybrid-axi search run` | read | Experimental Labs query: start once, then fetch asynchronous results once; resume pending queries by ID |
-| `hybrid-axi search terms` | read | Search using at least one documented named filter |
+| `hybrid-axi search terms` | read | Search using at least one documented named filter; count is upstream total, returned is result rows, complete is false when fewer rows return. Hybrid Analysis does not page search terms; narrow with --date-from/--date-to |
 | `hybrid-axi setup` | read | Show a read-only config template and SecretRef setup guidance without writing files |
 | `hybrid-axi setup hooks` | write | Explicitly install or repair local-only Claude Code, Codex and OpenCode session integrations; no API calls |
 | `hybrid-axi submit dropped-file` | write | Preview analysis of an exact dropped SHA256 from a report; the API accepts no environment override |
@@ -144,9 +144,12 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for implementation conventions and offlin
 ## Doctor and quota
 
 `hybrid-axi doctor` verifies credential protections, reads `/key/current` and `/key/submission-quota`, and reports authentication, key level, quota and observed limit headers.
-It does not prove access to other operations.
+It also probes one read in each command group: system version, report state for a zero-hash placeholder, filename term search, detonation feed and zero-hash lookup.
+Each probe uses API quota, and every denied probe is listed as `permission-denied` without preventing later probes.
+A missing placeholder report is `not-found`, which does not establish access; unprobed operations remain unverified.
 `hybrid-axi quota` reads the same two operations and reports the quota body and separately observed headers from each response.
-Both commands accept `--config` and `--profile`, make at most two requests without retries, and never submit a sample or URL.
+Both commands accept `--config` and `--profile`, disable retries, and never submit a sample or URL.
+Doctor makes at most seven requests; quota makes at most two.
 The `api_key` and user fields from key inspection are always omitted.
 
 Header observations include quota, rate-limit, retry and API-version information from the explicit [header allowlist](docs/design.md#cli-and-output-contract).
@@ -178,6 +181,9 @@ When rows are limited, output reports the truncation with returned and total cou
 `hybrid-axi search terms` requires at least one documented named filter; run its help for the complete filter list.
 Filter flags use kebab-case, such as `--env-id`, `--vx-family` and `--date-from`.
 Term date filters use `YYYY-MM-DD HH:mm`.
+Output preserves upstream `count` beside `returned` result rows, both per search and in aggregate, and adds `complete: false` when fewer rows return.
+Hybrid Analysis does not page search terms; narrow with `--date-from`/`--date-to`.
+There is no term-search limit or cursor option.
 Search requests transmit filters and hashes, without uploading samples or URLs for analysis.
 
 `hybrid-axi search run --query '<query>'` starts one experimental Labs query with `--size` default 50 (range 1-200) and `--page` default 1.
@@ -303,10 +309,12 @@ Collections have a separate local `--limit` default of 100, including under `--f
 Feed totals remain unknown unless the response supplies one; current feeds describe only their capped recent window.
 The CLI provides a rerun command whenever local truncation occurs and does not invent pagination for unpaged endpoints.
 
-`api get <path>` accepts a relative API path with or without a leading slash, such as `report/<id>/summary` or `/report/<id>/memory-dump/hex-dump?filename=<name>`.
+`api get <path>` accepts a relative API path with or without a leading slash, such as `report/<id>/summary` or `report/<id>/memory-dump/hex-dump?filename=<name>`.
 An omitted leading slash is added before the existing path validation.
+Use the no-slash form in Git Bash to avoid automatic Windows path conversion, or set `MSYS_NO_PATHCONV=1`.
+Drive-prefixed paths fail before credential resolution with that recovery hint.
 It serves only bound report/feed/system JSON reads, key inspection/quota, stable hash overview/lookup, experimental Labs overview and query results.
-Use `--labs` for a Labs path such as `/sample/<sha256>/overview`.
+Use `--labs` for a Labs path such as `sample/<sha256>/overview`.
 Query keys must match the selected operation's strict schema; duplicate and malformed parameters fail before credentials are resolved.
 Named and raw reads share transport, decoders, redaction and output policies.
 Full URLs, encoded or traversing paths, binary routes, the mixed generic artifact route, consuming matches, refreshes, writes and unbound operations are blocked.
