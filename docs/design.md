@@ -182,7 +182,7 @@ See README's [hash and search](../README.md#hash-and-search) and [report, feed a
 Preview long text at 1,000 characters, include original length and offer `--full` only when truncation occurs.
 Lists expose returned count, upstream total when known, completeness and continuation separately from TOON array headers.
 Unknown totals stay unknown; truncation always has a command or selector to see more.
-Default list limit is 100 unless the upstream bound is lower; never invent pagination parameters for an unpaged API.
+For commands with a local list limit, the default is 100 unless the upstream bound is lower; never invent pagination parameters for an unpaged API.
 Labs synchronous search supports 1-based pages; asynchronous results are bounded by the submitted size and cannot be treated as the full database.
 Budget stops preserve validated rows and resumable query IDs/cursors with `complete:false`; partial errors exit 1.
 Hints preserve profile and relevant selectors and use placeholders for unknown IDs.
