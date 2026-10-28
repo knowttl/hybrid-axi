@@ -160,5 +160,4 @@ See [SECURITY.md](SECURITY.md) for handling and reporting security issues.
 
 ## License
 
-Package metadata declares MIT.
-This repository does not currently include a LICENSE file.
+Licensed under the [MIT License](LICENSE).
