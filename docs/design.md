@@ -2,7 +2,9 @@
 
 Planning baseline prepared on 2026-10-23.
 This document defines intended behavior across the implementation slices below.
-See [README](../README.md) for the current project status.
+See [README](../README.md) for onboarding and group coverage.
+
+[Scope](#purpose-and-scope) · [Decisions](#accepted-decisions) · [Evidence](#evidence-and-api-contracts) · [Architecture](#architecture-and-module-depth) · [Authentication](#profiles-and-authentication) · [Output](#cli-and-output-contract) · [Writes](#guarded-writes-and-artifact-handling) · [Ledger](#complete-operation-ledger) · [API notes](#api-quirks-and-decisions) · [Safety decisions](#confirmed-safety-decisions) · [Tests](#change-recipe-and-tests) · [Implementation history](#implementation-slices)
 
 ## Purpose and scope
 
@@ -39,7 +41,7 @@ The ledger classifies 39 reads, 12 guarded writes and 11 blocked operations, cou
 Only public documentation and its assets were fetched; no API operation was invoked.
 
 Pin bytes rather than relying on version strings to identify a snapshot.
-See [README development commands](../README.md#development) for offline specification and generated-artifact checks.
+See [development commands](../CONTRIBUTING.md#development) for offline specification and generated-artifact checks.
 Spec refresh is explicit: review routes, parameters, effects, auth levels, pagination, schemas and errors before changing hashes.
 New operations stay blocked until reviewed and explicitly bound in the executable catalogue.
 
@@ -155,30 +157,30 @@ Additional command contracts are:
 | `doctor` | Key/quota plus one read per system/report/search/feed/hash group, at most seven requests without retries or samples; each probe uses API quota. | keyLevel, quota, rateLimits, per-operation probes with permission-denied rows |
 | `quota` | Same two key operations, body usage plus observed limit headers. | keyLevel, quota, rateLimits |
 | `hash show <sha256>` | Stable overview; `--labs` selects experimental sample overview; report ids locally limited by `--limit` (default 100). | sha256, verdict, threat_score, reports/report_ids |
-| `hash search` | Exactly one `--hash` or `--hashes-file`; bulk POST only for the latter. | See [shipped output](../README.md#hash-and-search). |
+| `hash search` | Exactly one `--hash` or `--hashes-file`; bulk POST only for the latter. | See [shipped output](behavior.md#hash-and-search). |
 | `search terms` | Documented named filters only; strict nonempty input; no paging, limit or cursor; always advise narrowing dates. | sha256, verdict, threat_score, report ID, upstream count, returned rows, complete: false when incomplete |
 | `search run` | Experimental Labs query, `--query`, `--size` (default 50, max 200), `--page`, `--date-from`, `--date-to`; starts once and retrieves results within the deadline. | sha256, verdict, score, query status |
-| `search results <id>` | Experimental resumable results read, never reruns the query. | See [shipped output](../README.md#hash-and-search). |
+| `search results <id>` | Experimental resumable results read, never reruns the query. | See [shipped output](behavior.md#hash-and-search). |
 | `report show/state <id>` | Job ID or `sha256:environmentId`; summary and state respectively. | See [report field selections](../src/report-catalogue.ts). |
 | `report file <id>` | Exactly one `--type` and explicit new `--output`; one artifact per call, type determines gate below. | id, type, output, bytes |
 | `quick-scan file/url` | `--file` or `--url`, documented `--scan-type`; read-class but transmits the supplied sample/URL. | id, finished, sha256 |
-| `hunting yara list/show` | See [shipped hunting behavior](../README.md#experimental-hunting). | See [hunting field selections](../README.md#experimental-hunting). |
-| `hunting yara create/update/delete` | See [shipped hunting behavior](../README.md#experimental-hunting). | See [hunting field selections](../README.md#experimental-hunting). |
-| `hunting matches` | See [shipped hunting behavior](../README.md#experimental-hunting). | See [hunting field selections](../README.md#experimental-hunting). |
-| `feed latest` | See [shipped feed behavior](../README.md#reports-feeds-and-reviewed-raw-reads). | See [feed field selections](../src/report-catalogue.ts). |
+| `hunting yara list/show` | See [shipped hunting behavior](behavior.md#experimental-hunting). | See [hunting field selections](behavior.md#experimental-hunting). |
+| `hunting yara create/update/delete` | See [shipped hunting behavior](behavior.md#experimental-hunting). | See [hunting field selections](behavior.md#experimental-hunting). |
+| `hunting matches` | See [shipped hunting behavior](behavior.md#experimental-hunting). | See [hunting field selections](behavior.md#experimental-hunting). |
+| `feed latest` | See [shipped feed behavior](behavior.md#reports-feeds-and-reviewed-raw-reads). | See [feed field selections](../src/report-catalogue.ts). |
 | `api get <path>` | Relative API path plus `--labs` when appropriate; reviewed read-only GET bindings, validated query schema and normal output/transport policy. | Operation-specific fields |
 
 `api get` refuses binary routes, mixed-effect `/file/{type}`, refresh, consuming matches, unbound paths, full URLs and all writes; the HTTP method alone is insufficient authorization.
 Drive-prefixed paths get a Git Bash conversion hint before credential resolution; examples omit the leading slash.
 Raw reads cannot change credentials, origin, headers or budgets.
 `hash search --hashes-file` uses the deprecated `/search/hashes` operation because the requested bulk behavior has no equivalent stable bulk replacement in this snapshot; document that warning.
-See [README's hunting contract](../README.md#experimental-hunting) for JSON body files, stdin and size bounds.
+See [hunting contract](behavior.md#experimental-hunting) for JSON body files, stdin and size bounds.
 Submission selectors and options are operation-specific; the [submission definitions](../src/submission-catalogue.ts) own their schemas, including which operations accept an environment ID.
 Never silently enable deprecated anti-evasion/network flags.
 
 Keep JSON internally and encode [TOON](https://toonformat.dev/reference/spec.html) at stdout.
 Use 3-4 useful fields for normal lists.
-See README's [hash and search](../README.md#hash-and-search) and [report, feed and system](../README.md#reports-feeds-and-reviewed-raw-reads) contracts for field selection and detail controls.
+See the [hash and search](behavior.md#hash-and-search) and [report, feed and system](behavior.md#reports-feeds-and-reviewed-raw-reads) contracts for field selection and detail controls.
 Preview long text at 1,000 characters, include original length and offer `--full` only when truncation occurs.
 Lists expose returned count, upstream total when known, completeness and continuation separately from TOON array headers.
 Unknown totals stay unknown; truncation always has a command or selector to see more.
@@ -190,7 +192,7 @@ Exit 0 means success/no-op, 1 runtime failure and 2 usage error.
 Structured errors and data go to stdout; progress and diagnostics go to stderr.
 Bare `-v`, `-V` and `--version` print only the version before dynamically importing the command graph.
 
-See [README's hash and search contract](../README.md#hash-and-search) for shipped empty states and recovery commands.
+See [hash and search contract](behavior.md#hash-and-search) for shipped empty states and recovery commands.
 Never auto-submit, quick-scan or refresh a missing hash.
 The specs do not define a unique missing-analysis status/body, so implementation must distinguish confirmed absence from 401/403, malformed success and generic 404.
 Labs 425 means analysis is in progress, not absent: return explicit pending state and retry guidance without resubmitting.
@@ -224,7 +226,7 @@ Execution rereads optional state after intent reservation; changed state aborts 
 Scope and forced read-only are checked again after approval and immediately before authorization.
 
 Submission confirmation binds profile, operation, exact target selectors and a digest of the complete prepared request.
-The [submission definitions](../src/submission-catalogue.ts) own each operation's target selectors; see [README](../README.md#submissions-and-quick-scans) for shipped submission behavior.
+The [submission definitions](../src/submission-catalogue.ts) own each operation's target selectors; see [behavior guide](behavior.md#submissions-and-quick-scans) for shipped submission behavior.
 Every submission preview states: **The sample and its report can become visible to the community.**
 YARA creates bind the exact identifier and payload digest; update/delete bind exact rule ID and proposed change digest.
 Download confirmation binds profile, report/hash ID, artifact kind, any dropped hash or memory selector and destination.
@@ -338,19 +340,55 @@ Blocked rows identify replacements or explain exclusions; they do not silently a
 | `39bc2cb8ea5bab2edd9eb9fa161b819a` | `POST /hunting/yara-rules/{id}` | write | `hunting yara update <id>` | Partial POST update; reset_counter is an explicit previewed effect. |
 | `63fb1846ad545a0551d782694673cb22` | `DELETE /hunting/yara-rules/{id}` | write | `hunting yara delete <id>` | Deletes exact own rule; 204 has no JSON body. |
 
-## Deviations from the prompt
+<a id="deviations-from-the-prompt"></a>
 
-The release [README deviation list](../README.md#deviations-from-the-prompt) owns all 18 findings, including their implementation consequences.
-Those original findings came from specification review.
-Later authorized live acceptance found the following differences from the pinned snapshots; automated verification remains offline with synthetic fixtures.
+## API quirks and decisions
+
+This section owns specification findings and live-acceptance evidence.
+The [pinned sources](../inventory/specs.json) and [operation ledger](#complete-operation-ledger) record the underlying contracts.
+
+1. Stable hash lookup is now `GET /search/hash`; POST hash lookup is deprecated, as are bulk `/search/hashes` and `/report/summary`.
+2. Labs `search run` can return synchronous 200 results or asynchronous 202 query IDs; it is not invariably an async two-request exchange.
+   Async status is `query_status`; see [Hash and search](behavior.md#hash-and-search) for supported response envelopes and normalized output.
+3. Labs recent hunting matches are consuming GETs: returned matches are marked delivered and will not be returned again.
+   No non-consuming matches-list alternative appears in the snapshot; this command is a guarded write by explicit decision.
+4. Overview refresh is a GET that fetches fresh external-service data; it is blocked rather than exposed as a raw read.
+5. Sample downloads declare `application/gzip`; generic binary downloads describe gzip and memory describes ZIP.
+   The specs do not promise password protection; guarded downloads save upstream bytes unchanged with a warning.
+6. `/report/{id}/file/{type}` is deprecated and mixes ordinary report formats with `bin` and `memory`; memory has no dedicated binary replacement in the spec.
+   Dropped-file legacy routes are deprecated, a current raw route exists, and `/dropped-files-v2` provides an archive; the raw route stays blocked under the archive-first requirement.
+7. `feed latest` is deprecated; `/feed/detonation` and `/feed/quick-scan` provide current feed alternatives with different caps (250 versus 2,500).
+8. Deprecated URL-to-file and URL-for-analysis submission variants remain unavailable.
+   Quick-scan-to-full and dropped-file submissions create sandbox analyses and require write policy.
+9. `/submit/hash-for-url` computes a lookup hash using POST and is a read; HTTP verbs do not determine policy.
+10. Labs overview documents 425 for analysis in progress; neither overview contract defines a definitive no-analysis error shape.
+    Denial and malformed data cannot be interpreted as empty; the synthetic empty-state contract does not establish a universal live no-analysis response.
+11. The key-level vocabulary is restricted/default/elevated/super, and `/key/current` includes the secret `api_key` plus user information that must be stripped.
+    Download auth levels are usually in `x-auth-level`, while newer operations sometimes omit that annotation; absence is not permission evidence.
+12. Quota is conveyed substantially through JSON-valued `Api-Limits`, `Submission-Limits`, `Quick-Scan-Limits` and `Sample-Download-Limits` headers, not a uniform standard rate-limit header set.
+    Some submit responses spell `Submission-Limits"` with a trailing quote.
+13. The stable changelog says all `/file-collection/*` routes return 410 from 2026-08-21; there are no such operations in these pinned paths.
+    Do not recreate them from historical notes.
+14. YARA update is POST, not PUT/PATCH; it updates supplied fields only and also exposes `reset_counter`.
+    A reset must be explicit in payload and preview; deletion returns 204 without a JSON body.
+15. The CLI projects the documented `SubmissionQuota` per-key `apikey` blocks as `keyQuota` before sensitive-field redaction.
+    This preserves quota values while keeping the credential-field scrubber intact.
+16. Compact feed output follows the individual schemas rather than inventing common verdict or timestamp values.
+    The [report catalogue](../src/report-catalogue.ts) owns the executable field selections and decoders.
+17. Report summary documents HTTP 410 with `SampleGone` for container files.
+    Keep it distinct from a successful summary and direct callers to the children read; do not interpret it as a missing analysis.
+
+### Live response differences and verification limits
+
+Recorded live acceptance found the following differences from the pinned snapshots; automated verification remains offline with synthetic fixtures.
 
 - Labs YARA counter reset returned a new rule ID, and the old ID subsequently returned 404.
   The pinned Labs update spec documents only resetting the all-time matches counter, without describing this identity change.
-  See [shipped hunting behavior](../README.md#experimental-hunting) for identity-change output and subsequent operations.
+  See [shipped hunting behavior](behavior.md#experimental-hunting) for identity-change output and subsequent operations.
 - Labs recent matches consumption is account-wide across all rules and irreversible for every returned match.
   The pinned spec documents only `items_count` and `search_after`, with no rule selector or rule filter.
   Rule-scoped consumption was withheld during live acceptance, and no undocumented parameter is sent.
-- Labs YARA create/update enforce the [local identifier limit](../README.md#experimental-hunting), which is absent from the pinned Labs spec.
+- Labs YARA create/update enforce the [local identifier limit](behavior.md#experimental-hunting), which is absent from the pinned Labs spec.
   Live acceptance returned HTTP 400 with `validation_errors` naming the identifier length for a longer identifier.
   No other field limits are inferred.
 - Stable `POST /search/terms` documents an array of `SampleTermsSearch`, but live responses contain one object with `search_terms`, `count` and `result`.
@@ -409,5 +447,5 @@ Apply the recorded Q1/Q2 decisions in the affected slices; no design approval al
 | T9 | T4, T6 | Experimental hunting YARA list/show/create/update/delete and consuming matches as a guarded write. | Unknown fields, POST partial updates/reset preview, 204 delete, exact guards, consuming-scope preview without request and no retry of consuming operations. |
 | T10 | T4 through T9 | Release README, catalogue-generated reference and skill with every leaf marked read/write, explicit session-hook setup, release-please and npm trusted-publishing workflow. | Offline tarball critical journeys, generated docs/spec freshness, build/lint/tests, public-data review; no publication yet. |
 | T11 | T10 | Separately authorized read-only acceptance with supplied test key on an authorized host. | Doctor/quota, key-level error guidance, known/missing/pending hash contracts and sanitized header/search evidence; no sample/URL upload, sandbox submission, YARA write, consuming matches or guarded artifact download. |
-| T12 | T11 | First npm release with a reviewed version, following the [release guidance](../README.md#release-and-hosted-integration). | Published integrity, offline version/help, shipped credential schema/catalogue/skill and package contents. |
+| T12 | T11 | First npm release with a reviewed version, following the [release guidance](../CONTRIBUTING.md#releases). | Published integrity, offline version/help, shipped credential schema/catalogue/skill and package contents. |
 | T13 | T12 | Separate artium-axi PR integrating hybrid-axi at a pinned released npm version, with a managed `api-key` credential for host `hybrid-analysis.com`. | Host fake walking skeleton, managed-secret redaction, restricted-key 403, package/image pinning and write-switch behavior. Submissions, YARA mutations, consuming matches and guarded sample/memory downloads are off by default and listed in the write switch; host policy cannot bypass native preview/execute/exact-confirm or journal. Map uploads/artifacts explicitly. |

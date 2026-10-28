@@ -2,6 +2,8 @@
 
 # Command reference
 
+[api](#api-get) · [auth](#auth-status) · [config](#config-path) · [doctor](#doctor) · [feed](#feed-detonation) · [hash](#hash-show) · [home](#home) · [hunting](#hunting-yara-list) · [profile](#profile-list) · [quick-scan](#quick-scan-scanners) · [quota](#quota) · [report](#report-show) · [search](#search-terms) · [setup](#setup) · [submit](#submit-file) · [system](#system-environments)
+
 Investigate Hybrid Analysis with bounded reads and explicitly guarded writes.
 Run each command with `--help` for required selectors, defaults and examples.
 

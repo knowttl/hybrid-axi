@@ -14,6 +14,38 @@ for (const [name, entry] of commands) {
 const invocation = (example) => example.replace(/^hybrid-axi(?= |$)/, "npx -y @knowttl/hybrid-axi");
 const table = (prefix) => ["| Command | Effect | Purpose |", "|---|---|---|", ...commands.map(([name, entry]) =>
   `| \`${prefix} ${name}\` | ${entry.effect} | ${escape(entry.description)} |`)].join("\n");
+
+const groups = [
+  ["api", "Reviewed JSON reads", "api-get"],
+  ["auth", "Verify local credential availability", "auth-status"],
+  ["config", "Locate config and state", "config-path"],
+  ["doctor", "Probe credentials, quota and read access", "doctor"],
+  ["feed", "Recent reports, quick scans and removals", "feed-detonation"],
+  ["hash", "Hash overviews, lookups and guarded samples", "hash-show"],
+  ["home", "Local profile and policy context", "home"],
+  ["hunting", "Experimental YARA rules and consuming matches", "hunting-yara-list"],
+  ["profile", "Discover local profiles", "profile-list"],
+  ["quick-scan", "Scan supplied files/URLs and convert results", "quick-scan-scanners"],
+  ["quota", "Key level and observed limits", "quota"],
+  ["report", "Reports, memory metadata and artifacts", "report-show"],
+  ["search", "Named filters and experimental Labs queries", "search-terms"],
+  ["setup", "Local templates and opt-in agent hooks", "setup"],
+  ["submit", "Guarded sandbox submissions", "submit-file"],
+  ["system", "Environments, configuration and statistics", "system-environments"],
+];
+const groupTable = () => [
+  "| Group | Purpose | Read/write | Reference |", "|---|---|---|---|",
+  ...groups.map(([group, purpose, anchor]) => {
+    const effects = new Set(commands.filter(([name]) => name.split(" ")[0] === group).map(([, entry]) => entry.effect));
+    if (effects.size === 0) throw new Error(`Unknown README command group: ${group}`);
+    const effect = effects.size === 1 ? [...effects][0] : "read/write";
+    return `| \`${group}\` | ${purpose} | ${effect}${group === "setup" ? " (local)" : ""} | [Details](docs/commands.md#${anchor}) |`;
+  }),
+].join("\n");
+if (commands.some(([name]) => !groups.some(([group]) => group === name.split(" ")[0]))) {
+  throw new Error("Command group missing from README summary");
+}
+
 const policy = `Read/write classifies API effects, including guarded downloads and consuming GETs.
 \`report file\` is read for normal report types and write for bin, dropped-files and memory.
 Quick scans are read exceptions that transmit the supplied sample or URL.
@@ -26,6 +58,8 @@ Gzip/ZIP delivery does not guarantee password protection.\n`;
 const reference = `${generated}
 
 # Command reference
+
+${groups.map(([group, , anchor]) => `[${group}](#${anchor})`).join(" · ")}
 
 ${DESCRIPTION}.
 Run each command with \`--help\` for required selectors, defaults and examples.
@@ -85,7 +119,7 @@ const readmePath = new URL("README.md", root);
 const readme = readFileSync(readmePath, "utf8");
 const start = "<!-- command-registry:start -->\n", end = "\n<!-- command-registry:end -->";
 if (readme.split(start).length !== 2 || readme.split(end).length !== 2) throw new Error("README command registry markers missing or duplicated");
-const summary = `${readme.split(start)[0]}${start}${table("hybrid-axi")}${end}${readme.split(end)[1]}`;
+const summary = `${readme.split(start)[0]}${start}${groupTable()}${end}${readme.split(end)[1]}`;
 const outputs = new Map([["docs/commands.md", `${reference.trimEnd()}\n`], ["skills/hybrid-axi/SKILL.md", skill], ["README.md", summary]]);
 let stale = false;
 for (const [path, content] of outputs) {

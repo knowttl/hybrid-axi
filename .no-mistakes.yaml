@@ -17,8 +17,10 @@ commands:
   lint: 'node scripts/isolated.mjs corepack pnpm run lint'
 document:
   instructions: |
-    README.md owns shipped behavior, package status and development commands.
-    CONTRIBUTING.md owns contribution and practical testing rules.
+    README.md owns onboarding, group coverage and concise safety/configuration summaries.
+    docs/commands.md and skills/hybrid-axi/SKILL.md own generated leaf-command reference.
+    docs/behavior.md, docs/configuration.md, docs/safety.md and docs/agent-integration.md own detailed usage contracts.
+    CONTRIBUTING.md owns contribution, development commands, releases and practical testing rules.
     docs/design.md owns architecture, safety invariants, operation classifications and implementation slices.
     inventory/specs.json owns source URLs, versions and byte hashes; specs/ holds unmodified snapshots.
     scripts/specs.mjs owns offline declaration and inventory/capabilities.json generation from specs and the design ledger.
