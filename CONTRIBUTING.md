@@ -9,7 +9,7 @@ See [README](README.md) for onboarding, [behavior notes](docs/behavior.md) for s
 Follow [vectra-axi](https://github.com/knowttl/vectra-axi): Node.js 22.12 or later, TypeScript with strict checking, ESM, pnpm through Corepack and a committed lockfile.
 Reuse `axi-sdk-js` for the CLI boundary, `@toon-format/toon` for stdout and zod for runtime decoding.
 Keep JSON internally, validate command inputs strictly and tolerate unknown response fields.
-Keep one authoritative command catalogue for grammar, effects, operation bindings, output fields, help and generated agent documentation.
+Follow the design's [documentation and catalogue ownership](docs/design.md#architecture-and-module-depth) when changing commands or agent guidance.
 Prefer caller-shaped functions hiding a complete responsibility over forwarding wrappers per endpoint.
 Match existing style, avoid adjacent refactors and never edit generated files or changelogs manually.
 
@@ -85,7 +85,7 @@ Live API acceptance requires separate authorization.
 `corepack pnpm run spec:generate` regenerates declarations and the non-executable capability inventory from the pinned bytes and design ledger.
 `spec:check` checks SHA-256 hashes, all 62 method/path classifications and deterministic generated artifacts offline.
 New inventory entries do not enable commands; executable bindings belong to `src/catalogue.ts`.
-After building, `corepack pnpm run docs:generate` regenerates the README group table, `docs/commands.md` and `skills/hybrid-axi/SKILL.md` from that catalogue.
+After building, `corepack pnpm run docs:generate` regenerates the README group table, `docs/commands.md` and `skills/hybrid-axi/SKILL.md`.
 `docs:check` fails when any committed generated document is stale.
 
 `.no-mistakes.yaml` separates offline preparation, affected tests and linting, and declares that no hosted CI is configured.
