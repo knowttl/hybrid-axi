@@ -2,7 +2,7 @@
 
 Keep changes focused and describe the problem, resulting behavior, scope, and verification in the pull request.
 Follow [the design](docs/design.md); the operation ledger is evidence, not permission to expose arbitrary HTTP.
-See [README](README.md) for shipped behavior and development commands.
+See [README](README.md) for onboarding, [behavior notes](docs/behavior.md) for shipped contracts and the [generated command reference](docs/commands.md) for every leaf.
 
 ## TypeScript conventions
 
@@ -37,13 +37,13 @@ Use deterministic fake time without sleeps and repeat changed async, time and I/
 Reserve packed-CLI E2E tests for critical journeys lower levels miss.
 
 `.no-mistakes.yaml` has separate preparation, test and lint commands, following vectra-axi.
-It must land on the default branch before any feature slice because no-mistakes reads trusted commands and review rules from that branch.
+Validation reads trusted commands and review rules from the default branch.
 The configuration targets hybrid-axi's real commands, tests, public repository and private-data review rules.
 Use affected tests plus a fixed critical CLI/safety baseline; shared infrastructure, dependencies, specs and selector changes run the full suite.
 Fail closed when test selection cannot determine the merge base or required baseline.
-Keep the development commands in README accurate; do not claim checks passed without running them.
+Keep the development commands below accurate; do not claim checks passed without running them.
 Verify specification hashes, complete ledger coverage and generated declarations offline.
-Follow the [README development commands](README.md#development) to regenerate catalogue documentation and check its freshness.
+Follow the [development commands](#development) to regenerate catalogue documentation and check its freshness.
 Do not fetch floating specs or call the real API during validation.
 Live acceptance is separate, read-only, uses a supplied test key on an authorized host, and never submits samples or quick scans.
 
@@ -55,3 +55,50 @@ Review staged files and the complete diff for private data before committing.
 Never commit scratch directories such as `.pi/`.
 Keep each full Markdown sentence on its own line and use a plain dash instead of an em dash.
 Do not add agent co-author trailers automatically.
+
+## Development
+
+Use Node.js 22.12+ and Corepack with the pinned pnpm version.
+Populate the dependency cache once with `corepack pnpm install --frozen-lockfile --ignore-scripts` before offline validation.
+
+```sh
+node scripts/isolated.mjs corepack pnpm install --offline --frozen-lockfile --ignore-scripts --config.confirm-modules-purge=false
+corepack pnpm run build
+corepack pnpm run lint
+corepack pnpm test
+corepack pnpm run spec:check
+corepack pnpm run docs:check
+node bin/hybrid-axi.js --version
+node bin/hybrid-axi.js --help
+```
+
+Preparation reuses the local dependency cache without network access and isolates HOME, XDG and agent state.
+Tests select affected tests plus fixed packaged-CLI and selection baselines; infrastructure changes run the full suite.
+Missing comparison bases or baseline files fail closed.
+The test command builds the package and verifies specification and documentation freshness under a network-denying preload inherited by child Node processes.
+Packed tests install local dependency tarballs with npm offline, then exercise version, help, local setup/auth status, opt-in hooks and rejected input.
+Transport and CLI tests route validated logical URLs to our synthetic HTTPS upstream, trusting only its test certificate.
+The network preload denies external sockets, DNS and arbitrary subprocesses, and propagates to Node descendants even with a fresh environment.
+No validation command calls Hybrid Analysis or provisions a service.
+Live API acceptance requires separate authorization.
+
+`corepack pnpm run spec:generate` regenerates declarations and the non-executable capability inventory from the pinned bytes and design ledger.
+`spec:check` checks SHA-256 hashes, all 62 method/path classifications and deterministic generated artifacts offline.
+New inventory entries do not enable commands; executable bindings belong to `src/catalogue.ts`.
+After building, `corepack pnpm run docs:generate` regenerates the README group table, `docs/commands.md` and `skills/hybrid-axi/SKILL.md` from that catalogue.
+`docs:check` fails when any committed generated document is stale.
+
+`.no-mistakes.yaml` separates offline preparation, affected tests and linting, and declares that no hosted CI is configured.
+Pull requests target `knowttl/hybrid-axi` with base `main`; validation never authorizes merging or publication by itself.
+
+## Releases
+
+Release Please prepares version and changelog changes on `main`.
+The release workflow is limited to release management, build, artifact freshness, packing and npm publication with provenance; there is no pull-request test workflow.
+All tests and public-data review run locally before delivery.
+Publication requires npm trusted publishing configured for `knowttl/hybrid-axi`, workflow `release-please.yml`, and the repository variable `NPM_TRUSTED_PUBLISHING=true`.
+Pushes to `main` publish only when Release Please creates a release.
+To publish an existing GitHub release whose npm publication was skipped, open Actions, select `release-please`, choose Run workflow on `main`, and supply the release's exact `tag`.
+Manual dispatch validates that the tag names an existing, non-draft GitHub release before the publish job can run; it does not bump the version or create another release.
+Both paths use the same gated publish job: check out the tag, require it to equal `v` plus the checked-out `package.json` version, install dependencies, build, check specification and documentation freshness, and pack the release.
+The packed artifact is published through GitHub OIDC with `id-token: write` and `npm publish --provenance`, without a stored npm token.
