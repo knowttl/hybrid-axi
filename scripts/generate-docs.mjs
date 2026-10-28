@@ -11,7 +11,6 @@ const commands = Object.entries(catalogue).sort(([a], [b]) => a.localeCompare(b,
 for (const [name, entry] of commands) {
   if (!["read", "write", "read/write"].includes(entry.effect)) throw new Error(`Missing command effect: ${name}`);
 }
-const invocation = (example) => example.replace(/^hybrid-axi(?= |$)/, "npx -y @knowttl/hybrid-axi");
 const table = (prefix) => ["| Command | Effect | Purpose |", "|---|---|---|", ...commands.map(([name, entry]) =>
   `| \`${prefix} ${name}\` | ${entry.effect} | ${escape(entry.description)} |`)].join("\n");
 
@@ -91,29 +90,95 @@ Credentials use environment/file SecretRefs, never inline secrets or chat.
 The default key reference is HYBRID_AXI_API_KEY.
 Only \`https://hybrid-analysis.com/api/v2\` and \`https://hybrid-analysis.com/api/labs\` are supported.
 
-Start with local discovery:
+## Investigation quick guide
 
-\`\`\`sh
-${catalogue.home.examples.map(invocation).join("\n")}
-${invocation(catalogue["auth status"].examples[0])}
-\`\`\`
+Start here rather than running help before each investigation.
+Examples below use synthetic values; replace the hash, job, query and filename with known investigation values.
+Each row is a complete invocation after the prefix \`npx -y @knowttl/hybrid-axi\` (or \`hybrid-axi\` when installed).
+All commands accept \`--config <path>\` and \`--profile <name>\`; preserve those selectors on pivots and resumptions.
 
-Home and the optional session hook read local profile context only, without HTTP or reading credential files.
-Install integrations only on explicit request through \`npx -y @knowttl/hybrid-axi setup hooks\`.
+| Task | Command after prefix (example) | Important controls |
+|---|---|---|
+| Local context | \`home\` | No HTTP or credential-file reads |
+| Credential availability | \`auth status\` | Local SecretRef and file-protection checks; no HTTP |
+| Quota | \`quota\` | At most two API reads; no retries |
+| Hash overview | \`hash show aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --limit 5\` | SHA256 required; optional experimental \`--labs\` |
+| Hash to reports | \`hash search --hash aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --limit 5\` | MD5/SHA1/SHA256/SHA512; returns associated report IDs |
+| Named search | \`search terms --filename synthetic.exe --fields sha256,job_id,verdict,threat_score\` | At least one filter; combine \`--domain\`, \`--vx-family\`, \`--env-id\`, or \`--date-from/--date-to 'YYYY-MM-DD HH:mm'\`; no limit/cursor |
+| Labs search and first result fetch | \`search run --query 'verdict:malicious' --size 5 --page 1\` | Experimental; size 1-200, default 50; inclusive date filters use YYYY-MM-DD |
+| Resume Labs query | \`search results synthetic-query --fields sha256,verdict,threat_score\` | Known query ID; never starts another query |
+| Report summary | \`report show synthetic-job --fields job_id,state,verdict,threat_score\` | Job ID or sha256:environmentId |
+| Report progress | \`report state synthetic-job\` | Same ID forms; one read, no wait loop |
+| Container children | \`report children synthetic-job --limit 5\` | Returns child IDs |
+| Memory metadata | \`report memory list synthetic-job --limit 5\` | Filename, address, flags, process PID; no raw memory download |
+| Extracted strings | \`report memory strings synthetic-job --filename synthetic.dmp --limit 5\` | Exactly one filename from memory metadata |
+| Recent reports | \`feed detonation --limit 5 --fields report_id,sha256,verdict_human\` | Recent window capped upstream at 250 |
+| Known quick scan | \`quick-scan show synthetic-scan --fields id,finished,sha256\` | Reads result without sending sample again |
+| Own YARA rules | \`hunting yara list --status active --fields id,identifier,active\` | Experimental; optional \`--search\` and comma-separated \`--threat-category\` |
 
-${policy}
-Sandbox submission previews disclose that the sample and report can become visible to the community.
-Hunting matches marks returned matches delivered and cannot be replayed safely.
-Labs contracts are experimental; unknown fields remain available with --fields or --full after redaction.
-Credential issuance, abuse-report creation, overview refresh and arbitrary HTTP are unavailable.
-Never interpret denial or malformed data as an empty result, or automatically submit a missing hash.
-Preserve profile, filters and known query IDs when resuming bounded results.
-Use a command's --help for required selectors, defaults and examples.
-See the [command reference](https://github.com/knowttl/hybrid-axi/blob/main/docs/commands.md) for all flags.
+## One-call forms and output bounds
 
-## Orientation
+\`hash show\` already combines verdict, score and associated reports; do not fetch each report just to establish the hash verdict.
+\`hash search --hashes-file <path>\` is the existing deprecated bulk lookup for newline-separated MD5/SHA1/SHA256 hashes, bounded to 1 MiB.
+\`search run\` starts once and fetches asynchronous results once within the same invocation.
+If pending, retain the returned ID and resume with \`search results\`; do not restart the query.
+Synchronous queries use page (default 1); asynchronous queries ignore page and treat size as the total match bound.
+No batch report-summary or wait-until-finished command exists; children-to-summary and unfinished report/scan checks require separate calls.
 
-${table("npx -y @knowttl/hybrid-axi")}
+Output is TOON on stdout, including errors.
+Default fields are compact; request identifiers, verdict and score first, adding detail fields only when needed.
+\`--fields\` selects comma-separated fields at each response level after redaction, including unknown Labs fields.
+\`--full\` instead returns all decoded fields and untruncated text; it cannot be combined with \`--fields\` and does not raise collection limits.
+Hash/report/feed collections use local \`--limit\` (default 100); text previews stop at 1,000 characters and nested detail arrays at 100 entries.
+Read returned/total/completeness and truncation hints before treating a list as exhaustive.
+Term searches have no pagination or limit; narrow dates when count exceeds returned.
+Labs search uses \`--size\`, while YARA lists and known quick scans have no \`--limit\`.
+Transport bounds each invocation to 20 seconds, 20 requests and 20 MiB decoded JSON.
+
+## Read allowlist and effects
+
+The table above is a read-only investigation allowlist: it never uploads a sample or URL, consumes matches or downloads artifacts.
+Reads still use quota and disclose search filters/hashes to the service.
+Home and optional session hooks read local profile context only; install hooks only on explicit request.
+\`doctor\` is an optional diagnostic, making up to seven quota-consuming reads rather than a required startup call.
+\`api get\` allows reviewed JSON reads only, rejecting arbitrary URLs, consuming matches, refreshes and binary routes.
+
+Keep \`submit *\`, YARA create/update/delete, \`hunting matches\`, \`hash file\` and guarded \`report file\` types bin/dropped-files/memory outside a read allowlist.
+Hunting matches irreversibly marks account-wide matches delivered across all rules.
+\`quick-scan file\` and \`quick-scan url\` transmit supplied data even under read-only policy; exclude them too.
+\`report file\` with normal types is an API read but writes a local file.
+\`setup hooks\` changes local agent configuration.
+API writes require a file profile's allowWrites and exact operation allowlist, preview, --execute and exact preview --confirm.
+HYBRID_AXI_READ_ONLY=true overrides API write permission; environment profiles cannot enable writes.
+Submissions can make the sample and report visible to the community.
+Downloads are bounded to 250 MiB and require a new output path; save unchanged, never extract or execute possible live malware.
+Gzip/ZIP password protection is unverified.
+
+## Help and failure recovery
+
+Use help when a command fails or an unfamiliar selector is needed, not to start an investigation.
+Top-level \`--help\` returns tool description, the complete leaf-command catalogue, global flags, version flags and home examples.
+Leaf \`--help\` returns that command's effect, required arguments/selectors, flags/defaults and examples without API calls.
+Bare groups such as \`report --help\` are not group manuals: they return validation guidance; select the leaf such as \`report show --help\`.
+The [command reference](https://github.com/knowttl/hybrid-axi/blob/main/docs/commands.md) covers every leaf.
+
+| Failure | Adjustment |
+|---|---|
+| Exit 2 / VALIDATION_ERROR | Correct the named argument/flag using the valid flags or leaf help; no request was sent |
+| AUTH_REQUIRED / HTTP 401 | Check selected SecretRef with auth status; do not put keys in arguments |
+| PROFILE_REQUIRED / PROFILE_AMBIGUOUS / PROFILE_NOT_FOUND | Select a configured profile or obtain read-only setup from the operator |
+| CONFIG_INVALID / CONFIG_INSECURE | Correct config, ownership and private-file protections; do not weaken checks |
+| PERMISSION_DENIED / HTTP 403 | Key lacks access; request appropriate permissions rather than retrying |
+| RATE_LIMITED / HTTP 429 | Respect the returned retry interval and rate-limit observations |
+| HTTP 404 | Missing or unavailable resource; never infer a clean verdict or automatically submit it |
+| HTTP 425 on Labs overview | Analysis pending; follow the exact overview resumption hint |
+| HTTP 410 on container summary | Read report children, then use known child IDs |
+| MALFORMED_RESPONSE / UPSTREAM_ERROR | Inspect structured diagnostics; never interpret failure as empty data |
+| TIMEOUT / network failure | Outcome may be ambiguous; inspect known result IDs before any new send |
+
+Exit 0 is success (including pending state); exit 1 is runtime failure.
+Only explicitly retryable non-consuming reads retry explicit 429/502/503/504 responses, at most twice within transport budgets.
+Never replay an ambiguous search start, quick scan, consuming read or write; reconcile audit ID, private journal and known result IDs.
 `;
 const readmePath = new URL("README.md", root);
 const readme = readFileSync(readmePath, "utf8");
