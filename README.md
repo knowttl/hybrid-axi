@@ -56,6 +56,7 @@ Hooks support Claude Code, Codex and OpenCode; restart the agent session after s
 Hooks inject local profile context without HTTP or credential-file reads; the [skill](skills/hybrid-axi/SKILL.md) supplies command and safety guidance on demand.
 Neither grants API permissions or enables writes.
 Either integration is sufficient; both are optional.
+Start investigations with the [compact agent guide](skills/hybrid-axi/SKILL.md#investigation-quick-guide), including read commands, one-call forms, output bounds and recovery.
 To remove hooks, delete only the managed SessionStart entries and OpenCode plugin listed in [agent integration](docs/agent-integration.md#removal).
 
 ## What it covers
