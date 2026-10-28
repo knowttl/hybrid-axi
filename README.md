@@ -53,7 +53,7 @@ npx skills add knowttl/hybrid-axi --skill hybrid-axi
 ```
 
 Hooks support Claude Code, Codex and OpenCode; restart the agent session after setup.
-Hooks inject local profile context without HTTP or credential-file reads; the skill injects the [full command reference](skills/hybrid-axi/SKILL.md) on demand.
+Hooks inject local profile context without HTTP or credential-file reads; the [skill](skills/hybrid-axi/SKILL.md) supplies command and safety guidance on demand.
 Neither grants API permissions or enables writes.
 Either integration is sufficient; both are optional.
 To remove hooks, delete only the managed SessionStart entries and OpenCode plugin listed in [agent integration](docs/agent-integration.md#removal).
