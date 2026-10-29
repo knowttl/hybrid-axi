@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3](https://github.com/knowttl/hybrid-axi/compare/v0.1.2...v0.1.3) (2026-10-28)
+
+
+### Bug Fixes
+
+* provide compact investigation guidance in agent skill ([#26](https://github.com/knowttl/hybrid-axi/issues/26)) ([29f0d5e](https://github.com/knowttl/hybrid-axi/commit/29f0d5e467f40736a95914e62f7ad021b5a16f18))
+
 ## [0.1.2](https://github.com/knowttl/hybrid-axi/compare/v0.1.1...v0.1.2) (2026-10-27)
 
 
