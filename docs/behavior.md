@@ -22,8 +22,11 @@ Transport errors use a structured `error` object with code, operation and any kn
 When a response was received, `error.rateLimits` preserves its allowlisted header observations, including on 429 and other failures.
 An `UPSTREAM_ERROR` includes `error.validation_errors` when supplied by the API, with redacted, bounded field diagnostics; inspect these when a schema-valid YARA body is rejected.
 Transport JSON parse and schema failures use `MALFORMED_RESPONSE` with HTTP status, bounded `contentType`, `shape` and `shapeTruncated`.
+`contentType` contains only the media type without parameters, or `null` when missing or invalid.
+An unparseable body has a root shape of `undefined`; its body text is never included.
 Schema failures also include bounded `issues`, `issuePaths` and `issuePathsTruncated`, reporting received and expected types without validator messages or response values.
-Only letter-led identifiers of at most 40 letters, digits or underscores are retained as shape keys; other keys, including filenames, paths, hostnames and GUIDs, become `<key>`.
+Only letter-led identifiers of at most 40 ASCII letters, digits or underscores are retained as shape and issue-path keys, with GUID forms excluded; other keys, such as dotted hostnames, filenames and paths, become `<key>`.
+This rule also applies to attacker-controlled malware report keys; identifier-shaped names can remain visible.
 Registered secrets are redacted even in retained identifiers.
 Arrays show their count and only the first element's shape, so later elements can differ.
 `INVALID_RESPONSE` is a later command-level contract check and does not carry transport shape diagnostics.
