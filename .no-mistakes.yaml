@@ -48,13 +48,16 @@ review:
         Never commit .pi/ scratch files. Never hand-edit generated files or CHANGELOG.md.
         HARD RULE: review and test steps never contact hybrid-analysis.com or any live service,
         and never provision services. Use offline checks and our own synthetic fake upstream only.
-        No tautological tests: exercise the CLI or transport against the fake upstream; never assert mock echoes,
-        source strings, private helpers or behavior already guaranteed by types. Test observable boundaries and failures.
         Credentials use env/file SecretRefs only, default HYBRID_AXI_API_KEY, never argv, and are scrubbed on every channel.
         Submissions, YARA create/update/delete, consuming matches and guarded sample/memory downloads
         require preview, --execute and exact --confirm. Submission previews disclose community visibility.
         Download preview/help includes the live-malware warning and unverified gzip/ZIP protection.
         Quick scans are reads that still send supplied data. Labs is experimental; unknown fields pass through.
+    - path: "**"
+      instructions: >-
+        Test quality: apply the "Test quality" rules in CONTRIBUTING.md to every added or changed test.
+        Flag each violation as a finding naming the rule number, the test file:line and the evidence.
+        Respect the listed exemptions. Never ask for a test to be written first or only to raise coverage.
     - path: "inventory/**"
       instructions: |
         Classify each pinned method/path exactly once with source hash and evidence.
