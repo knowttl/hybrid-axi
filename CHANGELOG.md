@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.4](https://github.com/knowttl/hybrid-axi/compare/v0.1.3...v0.1.4) (2026-10-30)
+
+
+### Bug Fixes
+
+* preserve safe diagnostics for malformed upstream responses ([#28](https://github.com/knowttl/hybrid-axi/issues/28)) ([ff0b9de](https://github.com/knowttl/hybrid-axi/commit/ff0b9debb5ec95eab75379274dc935ef3874e023))
+
 ## [0.1.3](https://github.com/knowttl/hybrid-axi/compare/v0.1.2...v0.1.3) (2026-10-28)
 
 
