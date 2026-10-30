@@ -1,5 +1,6 @@
 import type { z } from "zod";
 import { multipartBody } from "./uploads.js";
+import { ResponseDiagnostics } from "./response-diagnostics.js";
 
 export const HYBRID_ORIGIN = "https://hybrid-analysis.com";
 export type Credential = Readonly<{ apiKey: string; redact: (value: unknown) => unknown }>;
@@ -31,6 +32,9 @@ export class TransportError extends Error {
   constructor(readonly error: {
     code: string; message: string; operation: string; status?: number; keyLevel?: string;
     requiredKeyLevel?: string; retryAfter?: number; rateLimits?: Record<string, unknown>; auditId?: string; validation_errors?: unknown;
+    contentType?: string | null; shape?: readonly { path: string; type: string; count?: number; expected?: string }[];
+    shapeTruncated?: boolean; issues?: readonly { path: string; received: string; expected: string; code?: string; pathTruncated?: boolean }[];
+    issuePaths?: readonly string[]; issuePathsTruncated?: boolean;
   }, readonly help: readonly string[] = []) {
     super(error.message);
     this.name = "TransportError";
@@ -269,14 +273,22 @@ export function constructTransport(options: { credential: Credential; origin?: s
             fail("UPSTREAM_ERROR", message, operation, { ...details, ...(validationErrors !== undefined ? { validation_errors: validationErrors } : {}) });
           }
           let responseBody: unknown;
+          const diagnostics = new ResponseDiagnostics({ text: (value) => String(redact(value)) }, ["MALFORMED_RESPONSE"]);
           if (reviewed.download) responseBody = raw;
           else if (response.status === 204) responseBody = null;
           else {
             try { responseBody = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(raw)); }
-            catch { fail("MALFORMED_RESPONSE", "Upstream returned invalid JSON", operation, { status: response.status }); }
+            catch {
+              diagnostics.record(response.status, response.headers, undefined);
+              fail("MALFORMED_RESPONSE", "Upstream returned invalid JSON", operation, diagnostics.forError({ code: "MALFORMED_RESPONSE" }));
+            }
           }
           const decoded = reviewed.decoder.safeParse(responseBody);
-          if (!decoded.success) fail("MALFORMED_RESPONSE", "Upstream response does not match the documented contract", operation, { status: response.status });
+          if (!decoded.success) {
+            diagnostics.record(response.status, response.headers, responseBody);
+            diagnostics.validationFailed(decoded.error.issues);
+            fail("MALFORMED_RESPONSE", "Upstream response does not match the documented contract", operation, diagnostics.forError({ code: "MALFORMED_RESPONSE" }));
+          }
           if (reviewed.path === "/api/v2/key/current") {
             const level = (decoded.data as { auth_level_name?: unknown }).auth_level_name;
             keyLevel = typeof level === "string" && ["restricted", "default", "elevated", "super"].includes(level) ? level : undefined;
