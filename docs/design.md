@@ -78,7 +78,9 @@ Honor valid `Retry-After` seconds or HTTP dates; return `RATE_LIMITED` with retr
 Never automatically replay an ambiguous timeout, including safe reads, quick scans, search starts, guarded downloads and mutations.
 Quick scans and search starts are single-send even though classified as reads; separate result/status reads can resume known IDs.
 
-Translate errors into `error: {code, message, operation, status?, keyLevel?, requiredKeyLevel?, retryAfter?, rateLimits?, auditId?, validation_errors?}` plus useful next-step hints.
+Translate errors into a structured `error` object with code, message, operation and available context, plus useful next-step hints.
+The [behavior guide](behavior.md#doctor-and-quota) owns the emitted error diagnostics contract, including transport parse/schema failures and later command-level checks.
+The transport uses the canonical-copy contract in [response-diagnostics.ts](../src/response-diagnostics.ts), with shared vectors and byte integrity enforced by [the diagnostics contract tests](../test/response-diagnostics-contract.test.ts).
 Handle the documented `{message}` error, empty/malformed bodies and HTML failures without raw dependency output or stack traces.
 For `UPSTREAM_ERROR`, preserve supplied `validation_errors`, redacting before applying diagnostic bounds.
 Bound traversal to depth 4 and a 100-node budget, with at most 20 entries per container, 100 characters per key, 1,000 characters per string and an 8,000-character string-value budget; replace control characters with spaces and mark traversal limits as `[truncated]`.

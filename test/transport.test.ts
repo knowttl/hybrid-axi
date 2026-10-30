@@ -121,6 +121,28 @@ test("quota failure never returns a zero quota", async () => {
   await expect(createSession(fake.transport).quota()).rejects.toMatchObject({ error: { code: "MALFORMED_RESPONSE" } });
 });
 
+test("HTML success reports safe diagnostics without the login page", async () => {
+  const fake = fakeTransport([{ text: `<html>${syntheticKey} synthetic-login</html>`,
+    headers: { "content-type": "text/html; charset=utf-8" } }], { credential });
+  await expect(fake.transport.request("key.current")).rejects.toMatchObject({ error: {
+    code: "MALFORMED_RESPONSE", status: 200, contentType: "text/html",
+    shape: [{ path: "$", type: "undefined" }], shapeTruncated: false,
+  } });
+});
+
+test("malformed reports replace unsafe malware keys and omit response values", async () => {
+  const fake = fakeTransport([{ body: { auth_level_name: 42, "malware.example": { "C:\\payload.exe": syntheticKey },
+    "12345678-1234-1234-1234-123456789abc": "synthetic-value" }, headers: { "content-type": "application/json" } }], { credential });
+  const error = await fake.transport.request("key.current").catch((error: unknown) => error);
+  expect(error).toMatchObject({ error: { code: "MALFORMED_RESPONSE", status: 200, contentType: "application/json",
+    shape: [{ path: "$", type: "object" }, { path: '$["auth_level_name"]', type: "number", expected: "string" },
+      { path: '$["<key>"]', type: "object" }, { path: '$["<key>"]["<key>"]', type: "string" },
+      { path: '$["<key>"]', type: "string" }],
+    issues: [{ path: '$["auth_level_name"]', received: "number", expected: "string", code: "invalid_type" }],
+  } });
+  expect(JSON.stringify(error)).not.toMatch(/malware\.example|payload|12345678|synthetic-value|synthetic-secret|message.*expected string/);
+});
+
 test("new quota fields remain available after sensitive-field redaction", async () => {
   const fake = fakeTransport([{ body: keyBody }, { body: { ...quotaBody, pending: 1, password: "synthetic-password" } }], { credential });
   expect(await createSession(fake.transport).quota()).toMatchObject({ quota: { pending: 1, password: "***redacted***" } });

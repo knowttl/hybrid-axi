@@ -330,3 +330,12 @@ test("container 410 points to children without inventing a report summary", asyn
   expect(result.code).toBe(1);
   expect(result.output).toMatchObject({ error: { status: 410 }, help: ["Run hybrid-axi report children job"] });
 });
+
+test("HTML login responses render bounded diagnostics on stdout without the body", async () => {
+  const result = await cli(["report", "show", "job"], [{ text: `<html>synthetic-login ${syntheticKey}</html>`,
+    headers: { "content-type": "text/html; charset=utf-8" } }]);
+  expect(result.code).toBe(1);
+  expect(result.output).toMatchObject({ error: { code: "MALFORMED_RESPONSE", status: 200, contentType: "text/html",
+    shape: [{ path: "$", type: "undefined" }], shapeTruncated: false } });
+  expect(result.stdout).not.toMatch(/synthetic-login|synthetic-secret|<html>/);
+});
