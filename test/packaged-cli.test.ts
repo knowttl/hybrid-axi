@@ -1,12 +1,14 @@
 import { spawnSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { homedir } from "node:os";
+import { join, resolve, sep } from "node:path";
 import { performance } from "node:perf_hooks";
 import { pathToFileURL } from "node:url";
 import { decode } from "@toon-format/toon";
 import { parse } from "smol-toml";
 import { afterAll, beforeAll, expect, test } from "vitest";
+import { fakeHttpsHybrid, keyBody, quotaBody, syntheticKey } from "./support/fake-hybrid.js";
 
 let directory: string;
 let entry: string;
@@ -59,18 +61,86 @@ test("packed help lists executable local commands", () => {
   const args = ["--help"];
   const result = cli(...args);
   expect(result.status, result.stderr).toBe(0);
-  expect(decode(result.stdout)).toMatchObject({ commands: { home: "Show local profile and policy without contacting Hybrid Analysis",
+  expect(decode(result.stdout)).toMatchObject({ commands: { home: "Show live key level, quota and five recent public reports when configured; --offline shows local profile and policy without HTTP",
     "auth status": "Verify local SecretRef availability and file protections without HTTP" } });
   expect(result.stderr).toBe("");
+});
+
+test("installed artifact returns configured live home through the controlled HTTPS API", async () => {
+  const { main } = await import(pathToFileURL(join(packageRoot, "dist/src/cli.js")).href);
+  const { constructTransport } = await import(pathToFileURL(join(packageRoot, "dist/src/transport-core.js")).href);
+  const { transportBindings } = await import(pathToFileURL(join(packageRoot, "dist/src/catalogue.js")).href);
+  const fake = await fakeHttpsHybrid([{ body: keyBody }, { body: quotaBody }, { body: [] }]);
+  let stdout = "";
+  try {
+    await main([], { credentials: { env: { HYBRID_AXI_API_KEY: syntheticKey }, home: directory },
+      stdout: { write: (chunk: string) => { stdout += chunk; } },
+      createTransport: (credential: unknown) => constructTransport({ credential }, { bindings: transportBindings, fetch: fake.fetch }),
+    });
+    expect(decode(stdout)).toMatchObject({ status: "live", keyLevel: "restricted", feed: { count: 0, message: "0 results for feed detonation" } });
+    expect(fake.requests.map(({ method, url }) => [method, url])).toEqual([
+      ["GET", "/api/v2/key/current"], ["GET", "/api/v2/key/submission-quota"], ["GET", "/api/v2/feed/detonation"],
+    ]);
+    expect(stdout).not.toContain(syntheticKey);
+  } finally { await fake.close(); }
+});
+
+test("published guidance and per-command help disclose the quick-scan transmission exception", () => {
+  // These are shipped documentation contracts, not evidence of gate implementation.
+  for (const path of ["README.md", "docs/commands.md", "skills/hybrid-axi/SKILL.md"]) {
+    const document = readFileSync(join(packageRoot, path), "utf8");
+    expect(document).toMatch(/quick.scan[\s\S]*transmit[\s\S]*(without write gates|without those write gates|even under read-only policy)/i);
+  }
+  for (const type of ["file", "url"]) {
+    const result = cli("quick-scan", type, "--help");
+    expect(result.status).toBe(0);
+    expect(decode(result.stdout)).toMatchObject({ effect: "read", description: expect.stringMatching(/without a write gate/i) });
+    expect(decode(result.stdout)).not.toHaveProperty("flags.--execute");
+  }
+  const guarded = decode(cli("submit", "url", "--help").stdout);
+  expect(guarded).toMatchObject({ effect: "write", flags: { "--execute": expect.any(String), "--confirm": expect.any(String) } });
 });
 
 test.each([[], ["home"]])("packed home reports local setup state offline: %j", (...args) => {
   const result = cli(...args);
   expect(result.status, result.stderr).toBe(0);
-  expect(decode(result.stdout)).toMatchObject({ bin: expect.stringContaining("hybrid-axi.js"),
+  expect(decode(result.stdout)).toMatchObject({ bin: entry.startsWith(`${homedir()}${sep}`) ? `~${entry.slice(homedir().length)}` : entry,
     setup: "required", readOnly: true, help: ["Run hybrid-axi setup", "Run hybrid-axi --help"] });
   expect(result.stderr).toBe("");
 });
+
+test("packed identity follows relocation and collapses only the home directory boundary", () => {
+  const original = resolve(packageRoot, "../../..");
+  const moved = join(directory, "Relocated Tools");
+  renameSync(original, moved);
+  const originalEntry = entry;
+  entry = join(moved, "node_modules/@knowttl/hybrid-axi/bin/hybrid-axi.js");
+  try {
+    const result = cli("home", "--offline");
+    const expected = entry.startsWith(`${homedir()}${sep}`) ? `~${entry.slice(homedir().length)}` : entry;
+    expect(result.status, result.stderr).toBe(0);
+    expect(decode(result.stdout)).toMatchObject({ bin: expected });
+    const siblingHome = moved.slice(0, -1);
+    const sibling = spawnSync(process.execPath, [entry, "home", "--offline"], {
+      encoding: "utf8", cwd: directory, env: hookEnvironment(siblingHome),
+    });
+    expect(sibling.status, sibling.stderr).toBe(0);
+    expect(decode(sibling.stdout)).toMatchObject({ bin: entry });
+    const inside = spawnSync(process.execPath, [entry, "home", "--offline"], {
+      encoding: "utf8", cwd: directory, env: hookEnvironment(moved),
+    });
+    expect(decode(inside.stdout)).toMatchObject({ bin: `~${entry.slice(moved.length)}` });
+  } finally { entry = originalEntry; renameSync(moved, original); }
+});
+
+test.each([[], ["home"], ["quota"], ["hash", "search"], ["report", "state"], ["submit", "url"], ["setup", "hooks"]])(
+  "packed unknown flags name the rejected flag before credentials: %j", (...args) => {
+    const result = cli(...args, "--axi-review-unknown");
+    expect(result.status).toBe(2);
+    expect(decode(result.stdout)).toMatchObject({ code: "VALIDATION_ERROR", error: expect.stringContaining("--axi-review-unknown"),
+      help: expect.arrayContaining([expect.stringMatching(/valid flags/i)]) });
+    expect(result.stderr).toBe("");
+  });
 
 test.each([
   ["hash", "show", "synthetic-hash"], ["submit", "file"], ["home", "--unknown"],

@@ -31,7 +31,7 @@ function portableCommand(entry: string): string {
 }
 
 export function setupHooks(argv: string[]): Record<string, unknown> {
-  const usage = (): never => { throw new AxiError("Invalid hook setup command or flags", "VALIDATION_ERROR", [
+  const usage = (message = "Invalid hook setup command or flags"): never => { throw new AxiError(message, "VALIDATION_ERROR", [
     "Valid commands: setup hooks; valid flags: --scope user|project, --help",
   ]); };
   if (argv[0] !== "setup" || argv[1] !== "hooks") usage();
@@ -39,7 +39,7 @@ export function setupHooks(argv: string[]): Record<string, unknown> {
   const seen = new Set<string>();
   for (let index = 2; index < argv.length; index++) {
     const flag = argv[index]!;
-    if (!["--help", "--scope"].includes(flag) || seen.has(flag)) usage();
+    if (!["--help", "--scope"].includes(flag) || seen.has(flag)) usage(`Unknown or duplicate flag: ${flag.split("=")[0]}`);
     seen.add(flag);
     if (flag === "--scope") {
       const value = argv[++index];

@@ -34,12 +34,12 @@ test.each([
   const key = join(directory, "private-key");
   writeFileSync(key, "synthetic-file-secret", { mode: 0o600 });
   const path = config({ example: { apiKey: source === "env" ? { env: "SYNTHETIC_FILE_KEY" } : { file: key } } }, undefined, "private 'config.json");
-  const result = await output([...args, "--config", path], { SYNTHETIC_FILE_KEY: "synthetic-env-secret" });
+  const result = await output([...args, ...(args[0] === "auth" ? [] : ["--offline"]), "--config", path], { SYNTHETIC_FILE_KEY: "synthetic-env-secret" });
   expect(result.exitCode ?? 0).toBe(0);
   expect(result.value).toMatchObject(args[0] === "auth" ? { source, available: true } : {
     setup: "configured", help: ["Run hybrid-axi auth status --config '<path>'", "Run hybrid-axi --help"],
   });
-  for (const identifier of [directory, key, path, process.argv[1]!, "SYNTHETIC_FILE_KEY", "synthetic-file-secret", "synthetic-env-secret"])
+  for (const identifier of [directory, key, path, "SYNTHETIC_FILE_KEY", "synthetic-file-secret", "synthetic-env-secret"])
     expect(result.stdout).not.toContain(identifier);
 });
 
@@ -192,12 +192,11 @@ test("auth status reports only the secret source kind for a file ref", () => {
   expect(JSON.stringify(status)).not.toContain(path);
 });
 
-test("home reports only the binary name, not its path", () => {
+test("home identifies the executable by its absolute path", () => {
   const path = config({});
   const result = localCommand(["home", "--config", path], credentialStore({ env: {}, home: directory }));
   expect(typeof result.bin).toBe("string");
-  expect(isAbsolute(result.bin as string)).toBe(false);
-  expect(result.bin).not.toContain(sep);
+  expect(isAbsolute(result.bin as string) || (result.bin as string).startsWith(`~${sep}`)).toBe(true);
   expect(result.bin).not.toContain(directory);
 });
 

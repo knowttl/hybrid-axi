@@ -1,4 +1,6 @@
 import { TransportError, type RequestOptions, type Transport } from "./transport-core.js";
+import { parseReport, reportCommand } from "./reports.js";
+import { suggestion } from "./catalogue.js";
 
 export function createSession(transport: Transport) {
   async function quota() {
@@ -9,6 +11,23 @@ export function createSession(transport: Transport) {
   }
   return {
     quota,
+    async home(selectors: { config?: string; profile?: string }) {
+      const account = await quota();
+      const args = ["feed", "detonation", "--limit", "5"];
+      if (selectors.config) args.push("--config", selectors.config);
+      if (selectors.profile) args.push("--profile", selectors.profile);
+      try {
+        const parsed = parseReport(args)!;
+        parsed.request = { ...parsed.request, retry: false };
+        return { ...account, status: "live", feed: await reportCommand(parsed, transport),
+          scope: "Recent public detonation feed, not account submissions; at most five of up to 250 upstream rows",
+          help: [suggestion("feed detonation", selectors.config, selectors.profile), suggestion("home", selectors.config, selectors.profile) + " --offline"] };
+      } catch (error) {
+        if (!(error instanceof TransportError)) throw error;
+        return { ...account, status: "partial", feed: { status: "unavailable", ...error.toJSON() },
+          help: [suggestion("feed detonation", selectors.config, selectors.profile), suggestion("home", selectors.config, selectors.profile) + " --offline"] };
+      }
+    },
     async doctor() {
       const result = await quota();
       const hash = "0".repeat(64);

@@ -21,7 +21,7 @@ No design research calls an API operation or uses a credential.
 |---|---|
 | Runtime | Node.js 22.12+, strict TypeScript, ESM, pnpm/Corepack, `axi-sdk-js`, `@toon-format/toon`, zod and Vitest, matching vectra-axi. |
 | Client | Hand-written fetch session and closed transport; generated compile-time types from pinned specs, no generated runtime client. |
-| Default policy | Reads only; submission, YARA create/update/delete and sample/memory downloads use write guards. |
+| Default policy | Reads only; sandbox submissions, YARA create/update/delete and selected sample/memory downloads use write guards. Quick-scan file/URL transmission remains an ungated read exception. |
 | Quick scan | Read-class by explicit decision, without a write gate; help states that the sample or URL is sent to Hybrid Analysis. |
 | Sensitive artifacts | Allow guarded downloads, save bytes as provided, never extract, execute, encrypt or repackage; gzip/ZIP delivery does not promise password protection. |
 | Hunting matches | The recent-matches GET consumes delivery state and is a guarded write, including preview, execute and exact confirmation. |
@@ -155,7 +155,7 @@ Additional command contracts are:
 
 | Command | Selectors and behavior | Compact fields |
 |---|---|---|
-| `home` / no args | Local profile, binary name only (no path), description and effective policy; no network. | profile, origin, readOnly, setup state |
+| `home` / no args | Absolute executable identity, profile and policy; configured startup reads key level, quota and five recent public detonation reports without retries. `home --offline` retains local status without HTTP or credential-file reads. | profile, origin, readOnly, setup state, live/partial status, bounded public feed and recovery |
 | `auth status` | Local SecretRef availability and protection checks; no key value or HTTP. | profile, source kind, available |
 | `doctor` | Key/quota plus one read per system/report/search/feed/hash group, at most seven requests without retries or samples; each probe uses API quota. | keyLevel, quota, rateLimits, per-operation probes with permission-denied rows |
 | `quota` | Same two key operations, body usage plus observed limit headers. | keyLevel, quota, rateLimits |
