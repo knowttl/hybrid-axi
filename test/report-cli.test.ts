@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { gzipSync } from "node:zlib";
 import { decode } from "@toon-format/toon";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { main } from "../src/cli.js";
 import { transportBindings } from "../src/catalogue.js";
 import { constructTransport } from "../src/transport-core.js";
@@ -11,6 +11,144 @@ import { fakeHttpsHybrid, fakeTransport, keyBody, quotaBody, syntheticKey, type 
 
 const id = "a".repeat(64) + ":120";
 const summary = { job_id: "synthetic-job", state: "SUCCESS", verdict: "malicious", threat_score: 80 };
+
+test("batch reads the selected known IDs with the selected profile and fields", async () => {
+  const result = await cli(["--config", "<dir>/config.json", "--profile", "example", "report", "batch", "child-one", id, "--limit", "2", "--fields", "job_id,verdict"], [
+    { body: summary }, { body: { ...summary, job_id: "child-two", verdict: "clean" } },
+  ], { before: (directory) => writeFileSync(join(directory, "config.json"), JSON.stringify({ version: 1, profiles: { example: {} } }), { mode: 0o600 }) });
+  expect(result.code).toBe(0);
+  expect(result.output).toEqual({ complete: true, count: 2, results: [
+    { id: "child-one", result: { job_id: "synthetic-job", verdict: "malicious" } },
+    { id, result: { job_id: "child-two", verdict: "clean" } },
+  ] });
+  expect(result.requests).toMatchObject([
+    { method: "GET", url: "/api/v2/report/child-one/summary", body: "" },
+    { method: "GET", url: `/api/v2/report/${encodeURIComponent(id)}/summary`, body: "" },
+  ]);
+});
+
+test("batch discloses a container failure and continues with the remaining known ID", async () => {
+  const result = await cli(["report", "batch", "container", "child", "--limit", "2", "--profile", "example", "--config", "<dir>/config.json"], [
+    { status: 410, body: { message: "Container" } }, { body: summary },
+  ], { before: (directory) => writeFileSync(join(directory, "config.json"), JSON.stringify({ version: 1, profiles: { example: {} } }), { mode: 0o600 }) });
+  expect(result.code).toBe(1);
+  expect(result.output).toMatchObject({ complete: false, count: 2, results: [
+    { id: "container", error: { status: 410 }, help: [expect.stringMatching(/report children --config '.+config.json' --profile 'example' container$/)] },
+    { id: "child", result: summary },
+  ] });
+});
+
+test("batch discloses IDs beyond its explicit limit without requesting them", async () => {
+  const result = await cli(["report", "batch", "one", "two", "--limit", "1"], [{ body: summary }]);
+  expect(result.code).toBe(1);
+  expect(result.output).toMatchObject({ complete: false, results: [
+    { id: "one", result: summary }, { id: "two", error: { code: "LIMIT_EXCEEDED" } },
+  ] });
+  expect(result.requests).toHaveLength(1);
+});
+
+test("batch preserves earlier summaries and stops on the shared JSON budget", async () => {
+  const body = { ...summary, detail: "x".repeat(11 * 1024 * 1024) };
+  const result = await cli(["report", "batch", "one", "two", "three", "--limit", "3"], [{ body }, { body }], { scripted: true });
+  expect(result.code).toBe(1);
+  expect(result.output).toMatchObject({ complete: false, results: [
+    { id: "one", result: summary }, { id: "two", error: { code: "LIMIT_EXCEEDED" } },
+    { id: "three", error: { code: "LIMIT_EXCEEDED" }, skipped: true },
+  ] });
+  expect(result.requests).toHaveLength(2);
+});
+
+test.each([
+  ["report", "batch", "a".repeat(64), "--limit", "1"],
+  ["report", "wait", "a".repeat(64), "--timeout", "2"],
+])("bounded report reads reject ambiguous bare hashes before credentials: %j", async (...argv) => {
+  const result = await cli(argv, [], { noCredentials: true });
+  expect(result.code).toBe(2);
+  expect(result.output).toMatchObject({ error: expect.stringContaining("Bare hashes can match multiple reports"), code: "VALIDATION_ERROR" });
+  expect(result.requests).toHaveLength(0);
+});
+
+test.each([
+  ["report", "batch", "job"], ["report", "batch", "job", "--limit", "21"],
+  ["report", "wait", "job"], ["report", "wait", "job", "--timeout", "0"],
+  ["quick-scan", "wait", "scan"], ["quick-scan", "wait", "scan", "--timeout", "21"],
+])("bounded reads require a valid explicit bound before credentials: %j", async (...argv) => {
+  const result = await cli(argv, [], { noCredentials: true });
+  expect(result.code).toBe(2);
+  expect(result.output).toMatchObject({ code: "VALIDATION_ERROR" });
+  expect(result.requests).toHaveLength(0);
+});
+
+test.each([
+  { group: "report", pending: { state: "IN_PROGRESS" }, finished: { state: "SUCCESS" }, view: "result", path: "report/job/state" },
+  { group: "report", pending: { state: "IN_PROGRESS" }, finished: { state: "ERROR" }, view: "result", path: "report/job/state" },
+  { group: "quick-scan", pending: { id: "job", finished: false, sha256: "a".repeat(64) }, finished: { id: "job", finished: true, sha256: "a".repeat(64) }, view: "scan", path: "quick-scan/job" },
+])("$group wait reads the same ID until completion without resubmission", async ({ group, pending, finished, view, path }) => {
+  vi.useFakeTimers();
+  try {
+    const pendingResult = cli([group, "wait", "job", "--timeout", "3", "--full"], [{ body: pending }, { body: finished }], { scripted: true });
+    await vi.advanceTimersByTimeAsync(1000);
+    const result = await pendingResult;
+    expect(result.code).toBe(0);
+    expect(result.output).toEqual({ id: "job", complete: true, [view]: finished });
+    expect(result.requests).toMatchObject([
+      { url: `https://hybrid-analysis.com/api/v2/${path}`, init: { method: "GET" } },
+      { url: `https://hybrid-analysis.com/api/v2/${path}`, init: { method: "GET" } },
+    ]);
+  } finally { vi.useRealTimers(); }
+});
+
+test.each([
+  { group: "report", body: { state: "IN_PROGRESS" }, view: "result" },
+  { group: "quick-scan", body: { id: "job", finished: false, sha256: "a".repeat(64) }, view: "scan" },
+])("$group wait retains its last result when the explicit deadline expires", async ({ group, body, view }) => {
+  vi.useFakeTimers();
+  try {
+    const pendingResult = cli([group, "wait", "job", "--timeout", "1", "--full"], [{ body }], { scripted: true });
+    await vi.advanceTimersByTimeAsync(1000);
+    const result = await pendingResult;
+    expect(result.code).toBe(1);
+    expect(result.output).toMatchObject({ id: "job", complete: false, reason: "WAIT_TIMEOUT", [view]: body });
+    expect(result.requests).toHaveLength(1);
+  } finally { vi.useRealTimers(); }
+});
+
+test("report wait retains the selected fields and profile on a later read failure", async () => {
+  vi.useFakeTimers();
+  try {
+    const pendingResult = cli(["report", "wait", "job", "--timeout", "3", "--fields", "state", "--profile", "example", "--config", "<dir>/config.json"], [
+      { body: { state: "IN_PROGRESS", error: null } }, { status: 429, body: { message: "Rate limited" }, headers: { "retry-after": "10" } },
+    ], { scripted: true, before: (directory) => writeFileSync(join(directory, "config.json"), JSON.stringify({ version: 1, profiles: { example: {} } }), { mode: 0o600 }) });
+    await vi.advanceTimersByTimeAsync(1000);
+    const result = await pendingResult;
+    expect(result.code).toBe(1);
+    expect(result.output).toMatchObject({ id: "job", complete: false, reason: "RATE_LIMITED", result: { state: "IN_PROGRESS" }, error: { code: "RATE_LIMITED", retryAfter: 10 },
+      help: ["Wait for the reported retry interval before a new invocation", expect.stringMatching(/report wait --config '.+config.json' --profile 'example' 'job' --timeout 3 --fields state$/)] });
+    expect(result.requests).toHaveLength(2);
+  } finally { vi.useRealTimers(); }
+});
+
+test("quick-scan wait aborts an in-flight read at its deadline and retains the last scan", async () => {
+  vi.useFakeTimers();
+  const directory = mkdtempSync(join(tmpdir(), "hybrid-wait-"));
+  const scan = { id: "job", finished: false, sha256: "a".repeat(64) };
+  const fake = fakeTransport([{ body: scan }, "hang"], { credential: { apiKey: syntheticKey, redact: (value) => value } });
+  let stdout = "";
+  const previous = process.exitCode;
+  try {
+    process.exitCode = 0;
+    const pending = main(["quick-scan", "wait", "job", "--timeout", "2", "--fields", "finished"], {
+      credentials: { env: { HYBRID_AXI_API_KEY: syntheticKey }, home: directory },
+      stdout: { write: (chunk) => { stdout += chunk; } }, createTransport: () => fake.transport,
+    });
+    await vi.advanceTimersByTimeAsync(2000);
+    await pending;
+    expect(process.exitCode).toBe(1);
+    expect(decode(stdout)).toMatchObject({ id: "job", complete: false, reason: "WAIT_TIMEOUT", scan: { finished: false }, error: { code: "REQUEST_CANCELLED" },
+      help: expect.arrayContaining(["Run hybrid-axi quick-scan wait job --timeout 2 --fields finished"]) });
+    expect(fake.requests).toHaveLength(2);
+  } finally { process.exitCode = previous; vi.useRealTimers(); rmSync(directory, { recursive: true, force: true }); }
+});
 
 test.each(["C:/Program Files/Git/report/job/summary", "d:/report/job/summary"])("raw API explains Git Bash path conversion: %s", async (path) => {
   const result = await cli(["api", "get", path], [], { noCredentials: true });

@@ -147,6 +147,19 @@ An optional `--intent-id` reserves a durable intent against duplicate execution 
 `hybrid-axi report show <id>` reads the summary; `report state <id>` reads submission state.
 Use a job ID or `sha256:environmentId`.
 Container summary responses with HTTP 410 remain errors and point to `report children <id>`.
+`report batch <id>... --limit <1-20>` reads summaries for 1-20 explicitly supplied job IDs or `sha256:environmentId` selectors.
+Bare MD5/SHA1/SHA256/SHA512 hashes are rejected because they can identify multiple reports; use hash lookup results to select known report IDs explicitly.
+The required limit bounds how many summaries are requested; every supplied ID appears with its summary or an error, including IDs beyond that limit.
+Per-item failures do not discard successful summaries, and shared request, deadline or JSON budget exhaustion leaves the remaining IDs explicitly skipped.
+A partial batch exits 1 with `complete: false`.
+
+`report wait <id> --timeout <1-20>` reads the same known report's state until `SUCCESS` or `ERROR`.
+`quick-scan wait <id> --timeout <1-20>` reads the same known quick scan until `finished: true` without resending a sample or URL.
+Both require an integer timeout in seconds, read immediately and then at one-second intervals, disable retries, and abort in-flight reads at the relative deadline.
+Waits share the invocation's 20-second, 20-request and 20-MiB JSON limits; they never create a new transport budget per check.
+On timeout, transport budget exhaustion or a read failure, output retains the known ID and last validated result when available, with `complete: false` and an explicit `reason`, and exits 1.
+The batch and wait forms accept the same profile/config selectors and `--fields` or `--full` controls as their single-read forms.
+
 `report memory list <id>` lists metadata.
 `report memory strings <id> --filename <name>` and `report memory hex <id> --filename <name>` read structured extracted strings or hex rows without downloading raw memory.
 `report screenshots <id>` reads the documented Base64 screenshot array with bounded previews.

@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { OperationBinding } from "./transport-core.js";
 import type { MutationOperation } from "./writes-core.js";
 import { uploadSchema } from "./uploads.js";
+import { waitFlags } from "./bounded-wait.js";
 
 const common = { "--help": "Show help; default false", "--config": "Config path; default platform config", "--profile": "Profile name; default profile precedence" };
 const write = { "--execute": "Send once; default preview only", "--dry-run": "Preview only; incompatible with --execute", "--confirm": "Exact confirmation from the preview; required with --execute", "--intent-id": "Optional durable intent identifier; an already reserved intent is never replayed" };
@@ -51,6 +52,8 @@ export const submissionCatalogue: Record<string, { operation: string; effect: "r
     flags: { ...common, ...views, ...scanFlags, "--url": "Required exact HTTP(S) URL without embedded credentials", "--scan-type": `Required: ${urlScanTypes.join(", ")}` }, examples: ["hybrid-axi quick-scan url --url https://example.com --scan-type lookup_ha", "hybrid-axi quick-scan url --help"] },
   "quick-scan show": { operation: "quickScanShow", effect: "read", description: "Read a known quick-scan result and finished status without sending the sample again",
     flags: { ...common, ...views }, examples: ["hybrid-axi quick-scan show <id>", "hybrid-axi quick-scan show <id> --full"] },
+  "quick-scan wait": { operation: "quickScanShow", effect: "read", description: "Wait for a known quick scan to finish without sending any sample or URL; returns the last result and an incomplete reason on exhaustion",
+    flags: { ...common, ...views, ...waitFlags }, examples: ["hybrid-axi quick-scan wait <id> --timeout 10", "hybrid-axi quick-scan wait <id> --timeout 20 --fields id,finished,sha256"] },
   "quick-scan scanners": { operation: "quickScanState", effect: "read", description: "Read available quick-scan services and supported scan types",
     flags: { ...common, ...views }, examples: ["hybrid-axi quick-scan scanners", "hybrid-axi quick-scan scanners --full"] },
 };
