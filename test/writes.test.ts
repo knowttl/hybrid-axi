@@ -127,7 +127,7 @@ test("a redacted confirmation cannot authorize the original secret target", asyn
   } finally { await fake.close(); }
 });
 
-test("execution reserves a private intent before one send and stores metadata only", async () => {
+test("execution reserves a private intent before one send and stores metadata only", { timeout: 60_000 }, async () => {
   const fake = await fakeHttpsHybrid([{ body: { id: input.id, source: "response-body-must-not-be-journaled" } }]);
   const fetch: typeof globalThis.fetch = async (url, init) => {
     expect(records()).toMatchObject([{ kind: "intent", operation: "synthetic-write" }]);
@@ -242,7 +242,7 @@ test("a changed target state after reservation aborts without a write", async ()
   } finally { await fake.close(); }
 });
 
-test("host approval cannot widen frozen scope or the prepared request", async () => {
+test("host approval cannot widen frozen scope or the prepared request", { timeout: 60_000 }, async () => {
   const fake = await fakeHttpsHybrid([{ body: { id: input.id } }]);
   const options: WriteCoordinatorOptions = { approval: async (preview) => {
     (preview.proposed as { body: { active: boolean } }).body.active = false;

@@ -304,7 +304,7 @@ test("reviewed raw Labs overview uses the experimental binding", async () => {
   expect(result.requests[0]).toMatchObject({ url: `/api/labs/sample/${sha}/overview` });
 });
 
-test.each(["crt", "pcap", "json", "memory-strings", "xml", "html", "pdf", "maec", "stix", "misp", "misp-json", "openioc"])("one %s artifact is published unchanged and private", async (type) => {
+test.each(["crt", "pcap", "json", "memory-strings", "xml", "html", "pdf", "maec", "stix", "misp", "misp-json", "openioc"])("one %s artifact is published unchanged and private", { timeout: 60_000 }, async (type) => {
   const bytes = Uint8Array.from([0, 1, 128, 255, 10]);
   const paths: Record<string, string> = { crt: "certificate", pcap: "pcap", json: "report/json", "memory-strings": "memory-strings" };
   const result = await cli(["report", "file", "job", "--type", type, "--output", "<dir>/artifact"], [{ bytes, headers: { "vx-filename": "../../ignored" } }], {

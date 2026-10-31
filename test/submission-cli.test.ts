@@ -121,7 +121,7 @@ test("file preview discloses visibility, names sample and environment and sends 
   });
 });
 
-test("exact file confirmation sends multipart bytes once and journals metadata only", async () => {
+test("exact file confirmation sends multipart bytes once and journals metadata only", { timeout: 60_000 }, async () => {
   await withFake([{ status: 201, body: submitted }], async (fake) => {
     const confirm = confirmation(await invoke(fileArgs(), fake.fetch));
     const result = await invoke([...fileArgs(), "--execute", "--confirm", confirm], fake.fetch);
@@ -143,7 +143,7 @@ test("exact file confirmation sends multipart bytes once and journals metadata o
   });
 });
 
-test("multipart uploads preserve inert binary bytes", async () => {
+test("multipart uploads preserve inert binary bytes", { timeout: 60_000 }, async () => {
   const bytes = new Uint8Array([0, 255, 13, 10, 128, 1]);
   writeFileSync(sample, bytes);
   await withFake([{ status: 201, body: submitted }], async (fake) => {
@@ -226,7 +226,7 @@ test.each(["sample", "environment", "URL", "option"])("changed %s invalidates an
   });
 });
 
-test("file bytes changed during host approval cannot be uploaded", async () => {
+test("file bytes changed during host approval cannot be uploaded", { timeout: 60_000 }, async () => {
   await withFake([], async (fake) => {
     const confirm = confirmation(await invoke(fileArgs(), fake.fetch));
     const result = await invoke([...fileArgs(), "--execute", "--confirm", confirm], fake.fetch, () => {

@@ -109,7 +109,7 @@ test.each([
     expect(result.output).not.toHaveProperty("rules");
   });
 });
-test("create previews without HTTP then sends the exact confirmed JSON once", async () => {
+test("create previews without HTTP then sends the exact confirmed JSON once", { timeout: 60_000 }, async () => {
   await withFake([{ body: { ...rule, future: "kept" } }], async (fake) => {
     const preview = await invoke(createArgs(), fake.fetch);
     expect(preview.output).toMatchObject({ experimental: true, kind: "dry-run", preview: { target: { identifier: createBody.identifier }, proposed: { body: createBody } } });

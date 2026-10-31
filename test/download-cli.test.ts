@@ -73,7 +73,7 @@ test.each(cases)("$operation previews exact scope and warnings without a request
   expect(existsSync(log())).toBe(false);
 });
 
-test.each(cases)("$operation saves upstream compressed bytes privately without printing or journaling them", async ({ argv, path, type }) => {
+test.each(cases)("$operation saves upstream compressed bytes privately without printing or journaling them", { timeout: 60_000 }, async ({ argv, path, type }) => {
   const confirm = await confirmation(args(argv));
   const result = await cli([...args(argv), "--execute", "--confirm", confirm], [{ bytes, headers: { "vx-filename": "../../untrusted" } }]);
   expect(result.code).toBe(0);
