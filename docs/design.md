@@ -53,8 +53,8 @@ Keep related domain functions together; avoid forwarding wrappers per endpoint.
 One typed catalogue owns leaf grammar, flags, effects, operation IDs, method/path, request schemas, response decoders, default fields, auth notes and evidence.
 The ledger records evidence and exclusions; it never grants executable access by itself.
 Generate help and the complete leaf-command reference from the catalogue.
-`scripts/generate-docs.mjs` also owns the curated investigation guide in the generated installable skill, reusing the catalogue's description and setup guidance.
-The non-executable capability inventory comes from the pinned specifications and this document's operation ledger through `scripts/specs.mjs`.
+`scripts/generate-docs.ts` also owns the curated investigation guide in the generated installable skill, reusing the catalogue's description and setup guidance.
+The non-executable capability inventory comes from the pinned specifications and this document's operation ledger through `scripts/specs.ts`.
 Use `bin/`, `src/`, `test/`, `scripts/`, `inventory/`, `specs/`, `skills/hybrid-axi/` and strict ESM packaging consistent with vectra-axi.
 Ship `axi-credential.schema.json` and an importable reviewed catalogue for later hosted use.
 

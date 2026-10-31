@@ -13,14 +13,14 @@ function repository(options: { missingBase?: boolean; missingBaseline?: boolean 
   mkdirSync(join(directory, "scripts"));
   mkdirSync(join(directory, "test"));
   mkdirSync(join(directory, "src"));
-  copyFileSync(resolve("scripts/test-changes.mjs"), join(directory, "scripts/test-changes.mjs"));
+  copyFileSync(resolve("scripts/test-changes.ts"), join(directory, "scripts/test-changes.ts"));
   writeFileSync(join(directory, "test/test-selection.test.ts"), "// Synthetic baseline\n");
   if (!options.missingBaseline) writeFileSync(join(directory, "test/packaged-cli.test.ts"), "// Synthetic baseline\n");
   git("init", "-b", "main");
   git("add", ".");
   git("-c", "user.name=Synthetic", "-c", "user.email=synthetic@example.invalid", "-c", "commit.gpgsign=false", "commit", "-m", "fixture");
   if (!options.missingBase) git("update-ref", "refs/remotes/origin/main", "HEAD");
-  return { directory, plan: () => spawnSync(process.execPath, ["scripts/test-changes.mjs", "--plan"], { cwd: directory, encoding: "utf8" }),
+  return { directory, plan: () => spawnSync(process.execPath, ["scripts/test-changes.ts", "--plan"], { cwd: directory, encoding: "utf8" }),
     cleanup: () => rmSync(directory, { recursive: true, force: true }) };
 }
 
@@ -38,7 +38,7 @@ test.each(["package.json", "pnpm-lock.yaml", ".no-mistakes.yaml", "scripts/selec
   const fixture = repository();
   try {
     mkdirSync(dirname(join(fixture.directory, path)), { recursive: true });
-    writeFileSync(join(fixture.directory, path), "synthetic\n");
+    writeFileSync(join(fixture.directory, path), "{}\n");
     const result = fixture.plan();
     expect(result.status, result.stderr).toBe(0);
     expect(JSON.parse(result.stdout)).toMatchObject({ mode: "full-suite", vitestArgs: ["run"] });

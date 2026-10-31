@@ -34,13 +34,13 @@
   "packageManager": "pnpm@10.34.6",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc -p tsconfig.tooling.json",
     "lint": "pnpm run typecheck",
-    "test": "node scripts/isolated.mjs node scripts/test-changes.mjs",
-    "docs:generate": "node --import=./test/support/deny-network.mjs scripts/generate-docs.mjs",
-    "docs:check": "node --import=./test/support/deny-network.mjs scripts/generate-docs.mjs --check",
-    "spec:generate": "node --import=./test/support/deny-network.mjs scripts/specs.mjs --generate",
-    "spec:check": "node --import=./test/support/deny-network.mjs scripts/specs.mjs --check"
+    "test": "node scripts/isolated.ts node scripts/test-changes.ts",
+    "docs:generate": "node --import=./test/support/deny-network.ts scripts/generate-docs.ts",
+    "docs:check": "node --import=./test/support/deny-network.ts scripts/generate-docs.ts --check",
+    "spec:generate": "node --import=./test/support/deny-network.ts scripts/specs.ts --generate",
+    "spec:check": "node --import=./test/support/deny-network.ts scripts/specs.ts --check"
   },
   "dependencies": {
     "@toon-format/toon": "2.3.1",

@@ -12,9 +12,9 @@ providers:
   github:
     draft_pull_requests: false
 commands:
-  prepare: 'node scripts/isolated.mjs corepack pnpm install --offline --frozen-lockfile --ignore-scripts --config.confirm-modules-purge=false'
+  prepare: 'node scripts/isolated.ts corepack pnpm install --offline --frozen-lockfile --ignore-scripts --config.confirm-modules-purge=false'
   test: 'corepack pnpm test'
-  lint: 'node scripts/isolated.mjs corepack pnpm run lint'
+  lint: 'node scripts/isolated.ts corepack pnpm run lint'
 document:
   instructions: |
     README.md owns onboarding, group coverage and concise safety/configuration summaries.
@@ -23,12 +23,12 @@ document:
     CONTRIBUTING.md owns contribution, development commands, releases and practical testing rules.
     docs/design.md owns architecture, safety invariants, operation classifications and implementation slices.
     inventory/specs.json owns source URLs, versions and byte hashes; specs/ holds unmodified snapshots.
-    scripts/specs.mjs owns offline declaration and inventory/capabilities.json generation from specs and the design ledger.
+    scripts/specs.ts owns offline declaration and inventory/capabilities.json generation from specs and the design ledger.
     src/generated/ and inventory/capabilities.json are generated; never edit them manually.
     src/catalogue.ts owns executable commands and help; inventory evidence never grants execution.
     src/cli.ts owns dispatch and the AXI output boundary; bin/ owns executable launch and the version fast path.
-    scripts/isolated.mjs owns disposable HOME/XDG/agent state and offline dependency-cache reuse.
-    scripts/test-changes.mjs owns affected-test selection and the fixed critical baseline.
+    scripts/isolated.ts owns disposable HOME/XDG/agent state and offline dependency-cache reuse.
+    scripts/test-changes.ts owns affected-test selection and the fixed critical baseline.
     test/ owns observable CLI and transport behavior against synthetic fixtures and our fake upstream.
     package.json owns development commands and packaging; .no-mistakes.yaml owns validation policy.
     tsconfig.json owns strict compilation; vitest.config.ts owns test discovery and the network preload.
