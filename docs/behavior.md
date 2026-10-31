@@ -148,12 +148,13 @@ An optional `--intent-id` reserves a durable intent against duplicate execution 
 Use a job ID or `sha256:environmentId`.
 Container summary responses with HTTP 410 remain errors and point to `report children <id>`.
 `report batch <id>... --limit <1-20>` reads summaries for 1-20 explicitly supplied job IDs or `sha256:environmentId` selectors.
-Bare MD5/SHA1/SHA256/SHA512 hashes are rejected because they can identify multiple reports; use hash lookup results to select known report IDs explicitly.
+Both `report batch` and `report wait` reject bare MD5/SHA1/SHA256/SHA512 hashes because they can identify multiple reports; use hash lookup results to select known report IDs explicitly.
 The required limit bounds how many summaries are requested; every supplied ID appears with its summary or an error, including IDs beyond that limit.
 Per-item failures do not discard successful summaries, and shared request, deadline or JSON budget exhaustion leaves the remaining IDs explicitly skipped.
 A partial batch exits 1 with `complete: false`.
 
 `report wait <id> --timeout <1-20>` reads the same known report's state until `SUCCESS` or `ERROR`.
+Either terminal state completes the wait with `complete: true` and exit 0; inspect the returned state to distinguish analysis success from analysis failure.
 `quick-scan wait <id> --timeout <1-20>` reads the same known quick scan until `finished: true` without resending a sample or URL.
 Both require an integer timeout in seconds, read immediately and then at one-second intervals, disable retries, and abort in-flight reads at the relative deadline.
 Waits share the invocation's 20-second, 20-request and 20-MiB JSON limits; they never create a new transport budget per check.

@@ -141,7 +141,7 @@ Truncation reports counts and a follow-up command; use each command's `--help` f
 | Code | Meaning |
 |---|---|
 | 0 | Success |
-| 1 | Runtime failure |
+| 1 | Runtime failure, partial batch or incomplete wait; see [behavior](docs/behavior.md#reports-feeds-and-reviewed-raw-reads) |
 | 2 | Invalid input |
 
 ## Troubleshooting
