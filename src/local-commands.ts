@@ -1,4 +1,5 @@
-import { basename, resolve } from "node:path";
+import { resolve, sep } from "node:path";
+import { homedir } from "node:os";
 import { AxiError } from "axi-sdk-js";
 import { catalogue, DESCRIPTION, help, suggestion } from "./catalogue.js";
 import { credentialStore, ORIGIN } from "./profiles.js";
@@ -26,16 +27,16 @@ export function localStatusOutput(value: Record<string, unknown> | Error, config
 }
 
 export function commandInput(argv: string[]) {
-  const usage = (): never => { throw new AxiError("Unknown command, argument, or flag", "VALIDATION_ERROR", [
-    `Valid commands: ${Object.keys(catalogue).join(", ")}; valid flags: --config, --profile, --help`, "Run hybrid-axi --help",
+  const usage = (message = "Unknown command, argument, or flag"): never => { throw new AxiError(message, "VALIDATION_ERROR", [
+    `Valid commands: ${Object.keys(catalogue).join(", ")}; valid flags: --config, --profile, --help; home also accepts --offline`, "Run hybrid-axi --help",
   ]); };
   const words: string[] = [];
   const flags: Record<string, string> = {};
   for (let index = 0; index < argv.length; index++) {
     const word = argv[index]!;
     if (!word.startsWith("--")) { words.push(word); continue; }
-    if (!["--help", "--config", "--profile"].includes(word) || Object.hasOwn(flags, word)) usage();
-    if (word === "--help") flags[word] = "true";
+    if (!["--help", "--config", "--profile", "--offline"].includes(word) || Object.hasOwn(flags, word)) usage(`Unknown or duplicate flag: ${word.split("=")[0]}`);
+    if (word === "--help" || word === "--offline") flags[word] = "true";
     else {
       const value = argv[++index];
       if (!value || value.startsWith("-") || !value.trim()) usage();
@@ -44,6 +45,7 @@ export function commandInput(argv: string[]) {
   }
   const command = words.join(" ") || "home";
   if (!Object.hasOwn(catalogue, command)) usage();
+  if (flags["--offline"] && command !== "home") usage("--offline is only available for home; valid flags: --config, --profile, --help");
   return { command: command as keyof typeof catalogue, flags, topLevel: words.length === 0 };
 }
 
@@ -68,7 +70,8 @@ export function localCommand(argv: string[], store: ReturnType<typeof credential
     if (!(error instanceof AxiError) || error.code !== "PROFILE_REQUIRED") throw error;
   }
   const binary = resolve(process.argv[1] ?? "bin/hybrid-axi.js");
-  return { bin: basename(binary),
+  const home = homedir();
+  return { bin: binary.startsWith(`${home}${sep}`) ? `~${binary.slice(home.length)}` : binary,
     description: DESCRIPTION, profile: profile?.name ?? "none", origin: profile?.origin ?? ORIGIN,
     readOnly: profile ? store.effectiveReadOnly(profile) : true, setup: profile ? "configured" : "required",
     status: "Local configuration; doctor and quota are available for explicit API checks",

@@ -4,6 +4,17 @@
 
 Read the [command reference](commands.md) for flags and the [safety guide](safety.md) before enabling writes.
 
+## Startup
+
+Configured `hybrid-axi` or `hybrid-axi home` reads key level, submission quota and the recent public detonation feed, with three requests and no retries.
+Home shows at most five reports, the available window count, the upstream cap and a command to recover locally omitted rows.
+This public feed is not the account's submission history and has no all-time total.
+An empty feed explicitly reports zero; authentication, permission, quota and service failures remain errors.
+If account reads succeed but the feed fails, home retains account context with `status: partial` and an unavailable feed carrying the structured error.
+`home --offline` and session hooks read local profile status without HTTP or resolving credential files.
+Unconfigured home explains setup without making API calls.
+The `bin` identity is the absolute executable path with only the home directory boundary collapsed to `~`.
+
 ## Doctor and quota
 
 `hybrid-axi doctor` verifies credential protections, reads `/key/current` and `/key/submission-quota`, and reports authentication, key level, quota and observed limit headers.

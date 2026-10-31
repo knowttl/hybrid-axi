@@ -7,7 +7,7 @@ import { downloadBindings, downloadOperations } from "./download-catalogue.js";
 import { submissionBindings, submissionCatalogue, submissionMutations } from "./submission-catalogue.js";
 import { huntingBindings, huntingCatalogue, huntingMutations } from "./hunting-catalogue.js";
 
-export const DESCRIPTION = "Investigate Hybrid Analysis with bounded reads and explicitly guarded writes";
+export const DESCRIPTION = "Investigate Hybrid Analysis with bounded reads and guarded sandbox submissions; quick scans transmit supplied data without write gates";
 export const SETUP_GUIDANCE = "Run hybrid-axi setup for a read-only profile template; use environment/file apiKey SecretRefs";
 
 export const mutationOperations: Readonly<Record<string, MutationOperation>> = Object.freeze({ ...downloadOperations, ...submissionMutations, ...huntingMutations });
@@ -31,8 +31,8 @@ export const catalogue = {
   ...huntingCatalogue,
   home: {
     effect: "read",
-    description: "Show local profile and policy without contacting Hybrid Analysis",
-    flags: { "--help": "Show help; default false", "--config": "Config path; default HYBRID_AXI_CONFIG or platform config", "--profile": "Profile name; default HYBRID_AXI_PROFILE or profile precedence" },
+    description: "Show live key level, quota and five recent public reports when configured; --offline shows local profile and policy without HTTP",
+    flags: { "--offline": "Local profile and policy only; no HTTP or credential-file reads; default false", "--help": "Show help; default false", "--config": "Config path; default HYBRID_AXI_CONFIG or platform config", "--profile": "Profile name; default HYBRID_AXI_PROFILE or profile precedence" },
     examples: ["hybrid-axi", "hybrid-axi home --help"],
   },
   "auth status": {

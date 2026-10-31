@@ -4,12 +4,12 @@
 
 [api](#api-get) · [auth](#auth-status) · [config](#config-path) · [doctor](#doctor) · [feed](#feed-detonation) · [hash](#hash-show) · [home](#home) · [hunting](#hunting-yara-list) · [profile](#profile-list) · [quick-scan](#quick-scan-scanners) · [quota](#quota) · [report](#report-show) · [search](#search-terms) · [setup](#setup) · [submit](#submit-file) · [system](#system-environments)
 
-Investigate Hybrid Analysis with bounded reads and explicitly guarded writes.
+Investigate Hybrid Analysis with bounded reads and guarded sandbox submissions; quick scans transmit supplied data without write gates.
 Run each command with `--help` for required selectors, defaults and examples.
 
 Read/write classifies API effects, including guarded downloads and consuming GETs.
 `report file` is read for normal report types and write for bin, dropped-files and memory.
-Quick scans are read exceptions that transmit the supplied sample or URL.
+Quick scans are read exceptions that transmit the supplied sample or URL without write gates, including under read-only policy.
 `setup hooks` writes local agent configuration only and requires an explicit request.
 API writes require a file profile's allowWrites and exact operation allowlist, preview, --execute and the exact preview --confirm string.
 HYBRID_AXI_READ_ONLY=true overrides all API write policies.
@@ -30,7 +30,7 @@ Gzip/ZIP delivery does not guarantee password protection.
 | `hybrid-axi hash file` | write | Save one guarded sample unchanged to a new private file, bounded at 250 MiB. Live-malware warning: this artifact may contain executable malware. Save only; do not extract or execute. The spec documents gzip/ZIP delivery without promising password protection. Protection is unverified; bytes are saved exactly as provided. |
 | `hybrid-axi hash search` | read | Find associated reports by hash, or deprecated bulk lookup from a newline-separated file |
 | `hybrid-axi hash show` | read | Show stable SHA256 overview; --labs selects the experimental Labs overview |
-| `hybrid-axi home` | read | Show local profile and policy without contacting Hybrid Analysis |
+| `hybrid-axi home` | read | Show live key level, quota and five recent public reports when configured; --offline shows local profile and policy without HTTP |
 | `hybrid-axi hunting matches` | write | Experimental Labs: account-wide, irreversible consumption across all rules; every returned undelivered match for the account is marked delivered, subject to count and timestamp. No rule selector; preview sends no request; never automatically replayed |
 | `hybrid-axi hunting yara create` | write | Experimental Labs: create own YARA rule; preview first, then --execute and exact --confirm. |
 | `hybrid-axi hunting yara delete` | write | Experimental Labs: delete own YARA rule; preview first, then --execute and exact --confirm. |
@@ -290,10 +290,11 @@ hybrid-axi hash show <sha256> --labs --full
 
 Effect: **read**.
 
-Show local profile and policy without contacting Hybrid Analysis
+Show live key level, quota and five recent public reports when configured; --offline shows local profile and policy without HTTP
 
 | Flag | Meaning |
 |---|---|
+| `--offline` | Local profile and policy only; no HTTP or credential-file reads; default false |
 | `--help` | Show help; default false |
 | `--config` | Config path; default HYBRID_AXI_CONFIG or platform config |
 | `--profile` | Profile name; default HYBRID_AXI_PROFILE or profile precedence |

@@ -8,7 +8,7 @@ user-invocable: false
 
 # hybrid-axi
 
-Investigate Hybrid Analysis with bounded reads and explicitly guarded writes.
+Investigate Hybrid Analysis with bounded reads and guarded sandbox submissions; quick scans transmit supplied data without write gates.
 Use `npx -y @knowttl/hybrid-axi` without a global install.
 Bare `--version`, `-v` and `-V` print the package version.
 
@@ -26,7 +26,7 @@ All commands accept `--config <path>` and `--profile <name>`; preserve those sel
 
 | Task | Command after prefix (example) | Important controls |
 |---|---|---|
-| Local context | `home` | No HTTP or credential-file reads |
+| Startup context | `home` | Three bounded reads: key level, quota, five recent public reports; `home --offline` stays local |
 | Credential availability | `auth status` | Local SecretRef and file-protection checks; no HTTP |
 | Quota | `quota` | At most two API reads; no retries |
 | Hash overview | `hash show aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --limit 5` | SHA256 required; optional experimental `--labs` |
@@ -66,7 +66,9 @@ Transport bounds each invocation to 20 seconds, 20 requests and 20 MiB decoded J
 
 The table above is a read-only investigation allowlist: it never uploads a sample or URL, consumes matches or downloads artifacts.
 Reads still use quota and disclose search filters/hashes to the service.
-Home and optional session hooks read local profile context only; install hooks only on explicit request.
+Configured home reads key level, quota and five recent public reports without retries; denied or unavailable reads are explicit, never zero results.
+Use `home --offline` for local context without HTTP or credential-file reads.
+Optional session hooks read local profile context only; install hooks only on explicit request.
 `doctor` is an optional diagnostic, making up to seven quota-consuming reads rather than a required startup call.
 `api get` allows reviewed JSON reads only, rejecting arbitrary URLs, consuming matches, refreshes and binary routes.
 

@@ -2,7 +2,7 @@
 
 ## Write gates
 
-Guarded downloads, submissions, YARA changes and consuming hunting matches use the shared coordinator.
+Guarded downloads, sandbox submissions, YARA changes and consuming hunting matches use the shared coordinator.
 Enable only the needed operation names in a file profile's `writes.operations` and set `writes.allowWrites` to `true`.
 The download names are `hash-download-bin`, `report-download-bin`, `report-download-dropped-files` and `report-download-memory`.
 The submission names are `submitFile`, `submitUrl`, `submitDroppedFile` and `convertQuickScan`.

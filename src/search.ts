@@ -30,7 +30,7 @@ export function parseSearch(argv: string[]) {
   for (let index = 2; index < argv.length; index++) {
     const word = argv[index]!;
     if (!word.startsWith("-")) { positional.push(word); continue; }
-    if (!Object.hasOwn(entry.flags, word) || Object.hasOwn(flags, word)) usage("Unknown or duplicate flag");
+    if (!Object.hasOwn(entry.flags, word) || Object.hasOwn(flags, word)) usage(`Unknown or duplicate flag: ${word.split("=")[0]}`);
     if (["--help", "--full", "--labs"].includes(word)) flags[word] = "true";
     else {
       const value = argv[++index];

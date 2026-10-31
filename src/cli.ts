@@ -125,6 +125,16 @@ export async function main(argv = process.argv.slice(2), options: {
         localStatus = command === "home" || command === "auth status";
         if (command === "setup hooks") return setupHooks(argv);
         selectors = { config: flags["--config"], profile: flags["--profile"] };
+        if (command === "home" && !flags["--help"]) {
+          const identity = localCommand(argv, store);
+          if (flags["--offline"] || identity.setup !== "configured") return localStatusOutput(identity, selectors.config, selectors.profile);
+          const loaded = store.load(selectors.config);
+          const profile = store.select(loaded.config, selectors.profile, selectors.config);
+          const credential = store.credentials(profile);
+          localStatus = false;
+          const transport = (options.createTransport ?? createTransport)({ ...credential, redact: (value) => store.redactor.payload(value) });
+          return { ...identity, ...await createSession(transport).home(selectors) };
+        }
         if (!flags["--help"] && (command === "doctor" || command === "quota")) {
           store.readOnly();
           const loaded = store.load(selectors.config);

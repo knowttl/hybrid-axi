@@ -1,6 +1,6 @@
 # hybrid-axi
 
-Investigate Hybrid Analysis with bounded reads and explicitly guarded writes
+Investigate Hybrid Analysis with bounded reads and guarded sandbox submissions; quick scans transmit supplied data without write gates.
 
 [![npm version](https://img.shields.io/npm/v/@knowttl/hybrid-axi)](https://www.npmjs.com/package/@knowttl/hybrid-axi) [![License](https://img.shields.io/npm/l/@knowttl/hybrid-axi)](#license) [![Node.js](https://img.shields.io/node/v/@knowttl/hybrid-axi)](package.json) [![npm provenance](https://img.shields.io/badge/npm-provenance-blue)](https://www.npmjs.com/package/@knowttl/hybrid-axi#provenance) [![AXI](https://img.shields.io/badge/AXI-agent%20experience-blue)](https://github.com/knowttl/hybrid-axi)
 
@@ -11,11 +11,12 @@ Investigate Hybrid Analysis with bounded reads and explicitly guarded writes
 Hybrid Analysis is a malware sandbox whose API includes quotas, large artifacts and consuming reads.
 Agents using the raw API must guess routes, limit responses and distinguish reads from irreversible effects.
 hybrid-axi gives agents and the humans running them bounded TOON output, verified read contracts and useful next steps.
-Submissions, YARA changes, consuming matches and malware downloads require explicit write policy and exact confirmation.
+Sandbox submissions, YARA changes, consuming matches and selected malware downloads require explicit write policy and exact confirmation.
+Quick-scan file and URL commands transmit supplied data without those write gates, including under read-only policy.
 
 ## Quickstart
 
-Requires Node.js 22.12 or later; install globally and open the local home view:
+Requires Node.js 22.12 or later; install globally and open the home view:
 
 ```sh
 npm install --global @knowttl/hybrid-axi
@@ -40,6 +41,8 @@ hybrid-axi system environments
 ```
 
 An API key alone selects a read-only environment profile; no config file is needed.
+Configured home shows bounded live account and public feed context; see [startup behavior](docs/behavior.md#startup) for request limits and failure handling.
+Run `hybrid-axi home --offline` for local status without HTTP or credential-file reads.
 `setup` only prints a template; `doctor` uses API quota for up to seven reads.
 See [configuration](docs/configuration.md) for named profiles and file-backed credentials.
 
@@ -70,7 +73,7 @@ To remove hooks, delete only the managed SessionStart entries and OpenCode plugi
 | `doctor` | Probe credentials, quota and read access | read | [Details](docs/commands.md#doctor) |
 | `feed` | Recent reports, quick scans and removals | read | [Details](docs/commands.md#feed-detonation) |
 | `hash` | Hash overviews, lookups and guarded samples | read/write | [Details](docs/commands.md#hash-show) |
-| `home` | Local profile and policy context | read | [Details](docs/commands.md#home) |
+| `home` | Live account and recent public feed context; explicit offline status | read | [Details](docs/commands.md#home) |
 | `hunting` | Experimental YARA rules and consuming matches | read/write | [Details](docs/commands.md#hunting-yara-list) |
 | `profile` | Discover local profiles | read | [Details](docs/commands.md#profile-list) |
 | `quick-scan` | Scan supplied files/URLs and convert results | read/write | [Details](docs/commands.md#quick-scan-scanners) |

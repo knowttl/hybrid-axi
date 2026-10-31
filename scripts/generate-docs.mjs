@@ -21,7 +21,7 @@ const groups = [
   ["doctor", "Probe credentials, quota and read access", "doctor"],
   ["feed", "Recent reports, quick scans and removals", "feed-detonation"],
   ["hash", "Hash overviews, lookups and guarded samples", "hash-show"],
-  ["home", "Local profile and policy context", "home"],
+  ["home", "Live account and recent public feed context; explicit offline status", "home"],
   ["hunting", "Experimental YARA rules and consuming matches", "hunting-yara-list"],
   ["profile", "Discover local profiles", "profile-list"],
   ["quick-scan", "Scan supplied files/URLs and convert results", "quick-scan-scanners"],
@@ -47,7 +47,7 @@ if (commands.some(([name]) => !groups.some(([group]) => group === name.split(" "
 
 const policy = `Read/write classifies API effects, including guarded downloads and consuming GETs.
 \`report file\` is read for normal report types and write for bin, dropped-files and memory.
-Quick scans are read exceptions that transmit the supplied sample or URL.
+Quick scans are read exceptions that transmit the supplied sample or URL without write gates, including under read-only policy.
 \`setup hooks\` writes local agent configuration only and requires an explicit request.
 API writes require a file profile's allowWrites and exact operation allowlist, preview, --execute and the exact preview --confirm string.
 HYBRID_AXI_READ_ONLY=true overrides all API write policies.
@@ -99,7 +99,7 @@ All commands accept \`--config <path>\` and \`--profile <name>\`; preserve those
 
 | Task | Command after prefix (example) | Important controls |
 |---|---|---|
-| Local context | \`home\` | No HTTP or credential-file reads |
+| Startup context | \`home\` | Three bounded reads: key level, quota, five recent public reports; \`home --offline\` stays local |
 | Credential availability | \`auth status\` | Local SecretRef and file-protection checks; no HTTP |
 | Quota | \`quota\` | At most two API reads; no retries |
 | Hash overview | \`hash show aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --limit 5\` | SHA256 required; optional experimental \`--labs\` |
@@ -139,7 +139,9 @@ Transport bounds each invocation to 20 seconds, 20 requests and 20 MiB decoded J
 
 The table above is a read-only investigation allowlist: it never uploads a sample or URL, consumes matches or downloads artifacts.
 Reads still use quota and disclose search filters/hashes to the service.
-Home and optional session hooks read local profile context only; install hooks only on explicit request.
+Configured home reads key level, quota and five recent public reports without retries; denied or unavailable reads are explicit, never zero results.
+Use \`home --offline\` for local context without HTTP or credential-file reads.
+Optional session hooks read local profile context only; install hooks only on explicit request.
 \`doctor\` is an optional diagnostic, making up to seven quota-consuming reads rather than a required startup call.
 \`api get\` allows reviewed JSON reads only, rejecting arbitrary URLs, consuming matches, refreshes and binary routes.
 
