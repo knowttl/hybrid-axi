@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { Readable } from "node:stream";
 import { constructTransport, type Credential, type OperationBinding } from "../../src/transport-core.js";
 import { transportBindings } from "../../src/catalogue.js";
-import { allowFakeServer } from "./deny-network.mjs";
+import { allowFakeServer } from "./deny-network.js";
 
 export type Reply = { status?: number; body?: unknown; text?: string; bytes?: Uint8Array; headers?: Record<string, string> };
 export const syntheticKey = "synthetic-secret+sentinel";

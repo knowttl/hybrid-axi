@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-function git(args) {
+function git(args: string[]) {
   const result = spawnSync("git", args, { encoding: "utf8" });
   if (result.error || result.status !== 0) throw new Error(`Cannot compute changed files: git ${args.join(" ")} failed`);
   return result.stdout;
@@ -24,13 +24,13 @@ try {
   else {
     console.log(`Test mode: ${full ? "full-suite" : "affected-only"}; baseline: ${baseline.join(", ")}`);
     const root = new URL("../", import.meta.url);
-    const guard = fileURLToPath(new URL("../test/support/deny-network.mjs", import.meta.url));
+    const guard = fileURLToPath(new URL("../test/support/deny-network.ts", import.meta.url));
     for (const [entry, ...args] of [
       ["node_modules/typescript/bin/tsc", "-p", "tsconfig.json"],
       ["node_modules/vitest/vitest.mjs", ...vitestArgs],
-      ["scripts/specs.mjs", "--check"],
-      ["scripts/generate-docs.mjs", "--check"],
-    ]) {
+      ["scripts/specs.ts", "--check"],
+      ["scripts/generate-docs.ts", "--check"],
+    ] satisfies [string, ...string[]][]) {
       const result = spawnSync(process.execPath, ["--import", guard, fileURLToPath(new URL(entry, root)), ...args], {
         stdio: "inherit", env: { ...process.env, NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ""} --import=${guard}`.trim() },
       });
@@ -39,6 +39,6 @@ try {
     }
   }
 } catch (error) {
-  console.error(error.message);
+  console.error((error as Error).message);
   process.exitCode = 1;
 }

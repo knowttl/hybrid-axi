@@ -6,7 +6,8 @@ See [README](README.md) for onboarding, [behavior notes](docs/behavior.md) for s
 
 ## TypeScript conventions
 
-Follow [vectra-axi](https://github.com/knowttl/vectra-axi): Node.js 22.12 or later, TypeScript with strict checking, ESM, pnpm through Corepack and a committed lockfile.
+Follow [vectra-axi](https://github.com/knowttl/vectra-axi): TypeScript with strict checking, ESM, pnpm through Corepack and a committed lockfile.
+Development tooling runs directly with Node.js 24 type stripping; the published CLI supports Node.js 22.12 or later.
 Reuse `axi-sdk-js` for the CLI boundary, `@toon-format/toon` for stdout and zod for runtime decoding.
 Keep JSON internally, validate command inputs strictly and tolerate unknown response fields.
 Follow the design's [documentation and catalogue ownership](docs/design.md#architecture-and-module-depth) when changing commands or agent guidance.
@@ -74,11 +75,11 @@ Do not add agent co-author trailers automatically.
 
 ## Development
 
-Use Node.js 22.12+ and Corepack with the pinned pnpm version.
+Use Node.js 24 and Corepack with the pinned pnpm version.
 Populate the dependency cache once with `corepack pnpm install --frozen-lockfile --ignore-scripts` before offline validation.
 
 ```sh
-node scripts/isolated.mjs corepack pnpm install --offline --frozen-lockfile --ignore-scripts --config.confirm-modules-purge=false
+node scripts/isolated.ts corepack pnpm install --offline --frozen-lockfile --ignore-scripts --config.confirm-modules-purge=false
 corepack pnpm run build
 corepack pnpm run lint
 corepack pnpm test
