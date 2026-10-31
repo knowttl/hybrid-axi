@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { OperationBinding } from "./transport-core.js";
 import { downloadFlags, downloadWarnings, guardedArtifacts, hashDownloadCatalogue } from "./download-catalogue.js";
+import { waitFlags } from "./bounded-wait.js";
 
 const text = z.string().nullable();
 const integer = z.number().int().nullable();
@@ -81,6 +82,11 @@ export const reportBindings: Readonly<Record<string, OperationBinding>> = {
 
 export const reportCatalogue: Record<string, { effect: "read" | "write" | "read/write"; description: string; flags: Record<string, string>; examples: string[] }> = {
   ...hashDownloadCatalogue,
+  "report batch": { effect: "read", description: "Read summaries for 1-20 known report IDs; rejects bare hashes and never chooses associated reports implicitly; preserves per-item failures",
+    flags: { ...common, "--limit": "Required maximum summaries, integer 1-20; remaining IDs are disclosed as incomplete" },
+    examples: ["hybrid-axi report batch <id> <id> --limit 2", "hybrid-axi report batch <id> --limit 1 --fields job_id,state,verdict"] },
+  "report wait": { effect: "read", description: "Wait for a known report state SUCCESS or ERROR without submitting again; returns the last state and an incomplete reason on exhaustion",
+    flags: { ...common, ...waitFlags }, examples: ["hybrid-axi report wait <id> --timeout 10", "hybrid-axi report wait <sha256:environmentId> --timeout 20"] },
   ...Object.fromEntries(Object.entries(reportReads).map(([command, binding]) => [command, {
     effect: binding.effect,
     description: binding.description,

@@ -38,7 +38,7 @@ beforeAll(() => {
   entry = join(packageRoot, "bin/hybrid-axi.js");
 }, 30_000);
 
-afterAll(() => { if (directory) rmSync(directory, { recursive: true, force: true }); });
+afterAll(() => { if (directory) rmSync(directory, { recursive: true, force: true }); }, 60_000);
 
 function cli(...args: string[]) {
   return spawnSync(process.execPath, [entry, ...args], { encoding: "utf8", cwd: directory, timeout: 10_000 });

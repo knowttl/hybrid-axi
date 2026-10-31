@@ -83,7 +83,9 @@ export async function main(argv = process.argv.slice(2), options: {
           const profile = store.select(loaded.config, selectors.profile, selectors.config);
           const credential = store.credentials(profile);
           const transport = (options.createTransport ?? createTransport)({ ...credential, redact: (value) => store.redactor.payload(value) });
-          return store.redactor.payload(await quickScanCommand(submission, transport)) as Record<string, unknown>;
+          const result = await quickScanCommand(submission, transport);
+          if (submission.command === "quick-scan wait" && result.complete === false) process.exitCode = 1;
+          return store.redactor.payload(result) as Record<string, unknown>;
         }
         const report = parseReport(argv);
         if (report) {
@@ -108,7 +110,9 @@ export async function main(argv = process.argv.slice(2), options: {
           const profile = store.select(loaded.config, selectors.profile, selectors.config);
           const credential = store.credentials(profile);
           const transport = (options.createTransport ?? createTransport)({ ...credential, redact: (value) => store.redactor.payload(value) });
-          return store.redactor.payload(await reportCommand(report, transport)) as Record<string, unknown>;
+          const result = await reportCommand(report, transport);
+          if (["report batch", "report wait"].includes(report.command) && result.complete === false) process.exitCode = 1;
+          return store.redactor.payload(result) as Record<string, unknown>;
         }
         const search = parseSearch(argv);
         if (search) {

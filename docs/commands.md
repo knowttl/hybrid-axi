@@ -43,7 +43,9 @@ Gzip/ZIP delivery does not guarantee password protection.
 | `hybrid-axi quick-scan show` | read | Read a known quick-scan result and finished status without sending the sample again |
 | `hybrid-axi quick-scan submit` | write | Preview conversion of a quick scan into a sandbox analysis; requires write policy, --execute and exact --confirm |
 | `hybrid-axi quick-scan url` | read | Read exception: sends the URL to Hybrid Analysis without a write gate; never automatically replays |
+| `hybrid-axi quick-scan wait` | read | Wait for a known quick scan to finish without sending any sample or URL; returns the last result and an incomplete reason on exhaustion |
 | `hybrid-axi quota` | read | Read key level, submission quota and observed limit headers with two bounded requests and no retries |
+| `hybrid-axi report batch` | read | Read summaries for 1-20 known report IDs; rejects bare hashes and never chooses associated reports implicitly; preserves per-item failures |
 | `hybrid-axi report children` | read | List child report identifiers |
 | `hybrid-axi report file` | read/write | Save one artifact unchanged to a new private file, bounded at 250 MiB; bin, dropped-files and memory require write scope, --execute and exact --confirm. Memory and legacy report formats use the deprecated generic route. Live-malware warning: this artifact may contain executable malware. Save only; do not extract or execute. The spec documents gzip/ZIP delivery without promising password protection. Protection is unverified; bytes are saved exactly as provided. |
 | `hybrid-axi report memory hex` | read | Read structured hex rows for exactly one memory filename |
@@ -52,6 +54,7 @@ Gzip/ZIP delivery does not guarantee password protection.
 | `hybrid-axi report screenshots` | read | Read bounded Base64 screenshots; image text is previewed unless --full |
 | `hybrid-axi report show` | read | Show a report summary for a job ID or sha256:environmentId |
 | `hybrid-axi report state` | read | Show submission state |
+| `hybrid-axi report wait` | read | Wait for a known report state SUCCESS or ERROR without submitting again; returns the last state and an incomplete reason on exhaustion |
 | `hybrid-axi search results` | read | Experimental Labs results for a known query ID; never starts a query |
 | `hybrid-axi search run` | read | Experimental Labs query: start once, then fetch asynchronous results once; resume pending queries by ID |
 | `hybrid-axi search terms` | read | Search using at least one documented named filter; count is upstream total, returned is result rows, complete is false when fewer rows return. Hybrid Analysis does not page search terms; narrow with --date-from/--date-to |
@@ -578,6 +581,26 @@ hybrid-axi quick-scan url --url https://example.com --scan-type lookup_ha
 hybrid-axi quick-scan url --help
 ```
 
+## quick-scan wait
+
+Effect: **read**.
+
+Wait for a known quick scan to finish without sending any sample or URL; returns the last result and an incomplete reason on exhaustion
+
+| Flag | Meaning |
+|---|---|
+| `--help` | Show help; default false |
+| `--config` | Config path; default platform config |
+| `--profile` | Profile name; default profile precedence |
+| `--full` | All response fields; default false |
+| `--fields` | Comma-separated response fields; default compact fields |
+| `--timeout` | Required deadline in seconds, integer 1-20; checks every second within shared transport budgets |
+
+```sh
+hybrid-axi quick-scan wait <id> --timeout 10
+hybrid-axi quick-scan wait <id> --timeout 20 --fields id,finished,sha256
+```
+
 ## quota
 
 Effect: **read**.
@@ -593,6 +616,26 @@ Read key level, submission quota and observed limit headers with two bounded req
 ```sh
 hybrid-axi quota
 hybrid-axi quota --profile example
+```
+
+## report batch
+
+Effect: **read**.
+
+Read summaries for 1-20 known report IDs; rejects bare hashes and never chooses associated reports implicitly; preserves per-item failures
+
+| Flag | Meaning |
+|---|---|
+| `--help` | Show help; default false |
+| `--config` | Config path; default platform config |
+| `--profile` | Profile name; default profile precedence |
+| `--fields` | Comma-separated response fields; default compact fields |
+| `--full` | All fields and untruncated text; default false |
+| `--limit` | Required maximum summaries, integer 1-20; remaining IDs are disclosed as incomplete |
+
+```sh
+hybrid-axi report batch <id> <id> --limit 2
+hybrid-axi report batch <id> --limit 1 --fields job_id,state,verdict
 ```
 
 ## report children
@@ -755,6 +798,26 @@ Show submission state
 ```sh
 hybrid-axi report state <id>
 hybrid-axi report state --help
+```
+
+## report wait
+
+Effect: **read**.
+
+Wait for a known report state SUCCESS or ERROR without submitting again; returns the last state and an incomplete reason on exhaustion
+
+| Flag | Meaning |
+|---|---|
+| `--help` | Show help; default false |
+| `--config` | Config path; default platform config |
+| `--profile` | Profile name; default profile precedence |
+| `--fields` | Comma-separated response fields; default compact fields |
+| `--full` | All fields and untruncated text; default false |
+| `--timeout` | Required deadline in seconds, integer 1-20; checks every second within shared transport budgets |
+
+```sh
+hybrid-axi report wait <id> --timeout 10
+hybrid-axi report wait <sha256:environmentId> --timeout 20
 ```
 
 ## search results

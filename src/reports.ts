@@ -5,6 +5,7 @@ import { artifactOutput, saveArtifact } from "./report-file.js";
 import { TransportError, type RequestOptions, type Transport } from "./transport-core.js";
 import { searchCommand } from "./search.js";
 import { guardedArtifacts } from "./download-catalogue.js";
+import { waitForResult } from "./bounded-wait.js";
 
 const reportId = /^(?:[A-Za-z0-9_-]{1,256}|[a-f\d]{64}:\d+)$/i;
 const rawSearch = { hashOverview: "hash show", labsOverview: "hash show", hashSearch: "hash search", queryResults: "search results" } as const;
@@ -34,10 +35,13 @@ export function parseReport(argv: string[]) {
     }
   }
   const needsId = command.startsWith("report ") || command === "hash file" || command === "api get";
-  if (positional.length > (needsId ? 1 : 0)) usage("Unexpected positional argument");
+  if (positional.length > (command === "report batch" ? 20 : needsId ? 1 : 0)) usage(command === "report batch" ? "Batch accepts at most 20 known IDs" : "Unexpected positional argument");
   if (flags["--help"]) return { command, flags, positional, help: { command, ...entry } };
-  if (needsId && positional.length !== 1) usage("One positional identifier or API path is required");
-  if (command.startsWith("report ") && !reportId.test(positional[0]!)) usage("Expected a job ID or sha256:environmentId");
+  if (needsId && (command === "report batch" ? !positional.length : positional.length !== 1)) usage(command === "report batch" ? "At least one known report ID is required" : "One positional identifier or API path is required");
+  if (command.startsWith("report ") && positional.some((id) => !reportId.test(id))) usage("Expected a job ID or sha256:environmentId");
+  if (["report batch", "report wait"].includes(command) && positional.some((id) => /^(?:[a-f\d]{32}|[a-f\d]{40}|[a-f\d]{64}|[a-f\d]{128})$/i.test(id))) usage("Bare hashes can match multiple reports; use hash search --hash <hash> and supply explicit job IDs or sha256:environmentId");
+  const bound = command === "report batch" ? "--limit" : command === "report wait" ? "--timeout" : undefined;
+  if (bound && (!flags[bound] || !/^\d+$/.test(flags[bound]!) || Number(flags[bound]) < 1 || Number(flags[bound]) > 20)) usage(`${bound} is required and must be an integer from 1 to 20`);
   if (command === "hash file" && !/^[a-f\d]{64}$/i.test(positional[0]!)) usage("Expected a SHA256");
   if (flags["--execute"] && flags["--dry-run"]) usage("--execute and --dry-run are mutually exclusive");
   if (flags["--full"] && flags["--fields"]) usage("Choose --full or --fields");
@@ -103,13 +107,37 @@ export async function reportCommand(parsed: NonNullable<ReturnType<typeof parseR
   if (parsed.help) return parsed.help;
   const { command, flags, positional, operation, request, output } = parsed;
   const next = (suffix: string) => `${suggestion(command, flags["--config"], flags["--profile"])}${positional[0] ? ` '${positional[0].replaceAll("'", "'\"'\"'")}'` : ""}${flags["--labs"] ? " --labs" : ""}${flags["--filename"] ? ` --filename '${flags["--filename"].replaceAll("'", "'\"'\"'")}'` : ""}${flags["--page"] ? ` --page ${flags["--page"]}` : ""}${suffix}`;
+  if (command === "report batch") {
+    const results: Record<string, unknown>[] = [];
+    const { "--limit": _limit, ...summaryFlags } = flags;
+    let stopped: TransportError | undefined;
+    for (const [index, id] of positional.entries()) {
+      if (stopped) {
+        results.push({ id, ...stopped.toJSON(), skipped: true });
+        continue;
+      }
+      if (index >= Number(flags["--limit"])) {
+        results.push({ id, error: { code: "LIMIT_EXCEEDED", message: "Explicit batch summary limit reached; no request sent" } });
+        continue;
+      }
+      try {
+        results.push({ id, ...await reportCommand({ ...parsed, command: "report show", flags: summaryFlags, positional: [id], operation: "report show", request: { pathParams: { id }, retry: false } }, transport) });
+      } catch (error) {
+        if (!(error instanceof TransportError)) throw error;
+        results.push({ id, ...error.toJSON() });
+        if (["LIMIT_EXCEEDED", "DEADLINE_EXCEEDED"].includes(error.error.code)) stopped = error;
+      }
+    }
+    return { results, count: results.length, complete: results.every((item) => !item.error) };
+  }
+  const waiting = command === "report wait" ? await waitForResult(transport, "report state", positional[0]!, Number(flags["--timeout"])) : undefined;
   if (Object.hasOwn(rawSearch, operation!)) {
     const target = rawSearch[operation as keyof typeof rawSearch];
     return searchCommand({ command: target, flags: { ...flags, ...(operation === "labsOverview" ? { "--labs": "true" } : {}), ...(operation === "hashSearch" ? { "--hash": String(request!.query!.hash) } : {}) },
       positional: [request!.pathParams?.sha256 ?? request!.pathParams?.id ?? ""], body: {} }, transport);
   }
   let response;
-  try { response = await transport.request(operation!, request); }
+  try { response = waiting ? { body: waiting.value } : await transport.request(operation!, request); }
   catch (error) {
     if (operation === "report show" && error instanceof TransportError && error.error.status === 410) {
       throw new TransportError(error.error, [`${suggestion("report children", flags["--config"], flags["--profile"])} ${request!.pathParams!.id}`]);
@@ -121,7 +149,7 @@ export async function reportCommand(parsed: NonNullable<ReturnType<typeof parseR
     const deprecated = Object.values(reportArtifacts).find((binding) => binding.path === artifact.path)?.deprecated;
     return { id: positional[0], type: flags["--type"], ...saveArtifact(output, response.body as Uint8Array, operation!), ...(deprecated ? { deprecated: true, warning: "This normal report format uses the deprecated /report/{id}/file/{type} route" } : {}) };
   }
-  const definition = reportReads[operation!];
+  const definition = reportReads[waiting ? "report state" : operation!];
   const truncation: { path: string; returned: number; total: number }[] = [];
   function trim(value: unknown, path = "result"): unknown {
     if (flags["--full"]) return value;
@@ -138,8 +166,10 @@ export async function reportCommand(parsed: NonNullable<ReturnType<typeof parseR
   }
   const select = (value: unknown) => value && typeof value === "object" && !Array.isArray(value) && !flags["--full"]
     ? Object.fromEntries((flags["--fields"]?.split(",") ?? definition?.fields ?? Object.keys(value)).filter((key) => Object.hasOwn(value, key)).map((key) => [key, (value as Record<string, unknown>)[key]])) : value;
-  const meta: Record<string, unknown> = { ...(definition?.deprecated ? { deprecated: true, warning: "Deprecated latest feed; use hybrid-axi feed detonation for the current feed" } : {}) };
+  const { value: _value, help: _help, ...waitStatus } = waiting ?? {};
+  const meta: Record<string, unknown> = { ...waitStatus, ...(waiting ? { id: positional[0] } : {}), ...(definition?.deprecated ? { deprecated: true, warning: "Deprecated latest feed; use hybrid-axi feed detonation for the current feed" } : {}) };
   const help: string[] = [];
+  if (waiting && !waiting.complete) help.push(...(waiting.help ?? []), next(` --timeout ${flags["--timeout"]}${flags["--full"] ? " --full" : flags["--fields"] ? ` --fields ${flags["--fields"]}` : ""}`));
   if (definition?.rows) {
     const envelope = response.body as Record<string, unknown>;
     const rows = (definition.rows === true ? response.body : envelope[definition.rows]) as unknown[];
@@ -157,7 +187,7 @@ export async function reportCommand(parsed: NonNullable<ReturnType<typeof parseR
       meta.continuation = { page: page + 1 };
       help.push(`${suggestion("feed abuse", flags["--config"], flags["--profile"])} --page ${page + 1}${flags["--limit"] ? ` --limit ${flags["--limit"]}` : ""}${flags["--full"] ? " --full" : flags["--fields"] ? ` --fields ${flags["--fields"]}` : ""}`);
     }
-  } else meta.result = trim(select(response.body));
-  if (truncation.length) { meta.truncation = truncation; help.push(next(` --full${flags["--limit"] ? ` --limit ${flags["--limit"]}` : ""}`)); }
+  } else if (response.body !== undefined) meta.result = trim(select(response.body));
+  if (truncation.length) { meta.truncation = truncation; help.push(next(` --full${flags["--limit"] ? ` --limit ${flags["--limit"]}` : ""}${waiting ? ` --timeout ${flags["--timeout"]}` : ""}`)); }
   return { ...meta, ...(help.length ? { help } : {}) };
 }

@@ -2,6 +2,8 @@ import { AxiError } from "axi-sdk-js";
 import { submissionBodies, submissionCatalogue, submissionOptionNames } from "./submission-catalogue.js";
 import { describeUpload } from "./uploads.js";
 import type { Transport } from "./transport-core.js";
+import { waitForResult } from "./bounded-wait.js";
+import { suggestion } from "./catalogue.js";
 
 export function parseSubmission(argv: string[]) {
   let prefix = 0;
@@ -34,10 +36,11 @@ export function parseSubmission(argv: string[]) {
       flags[flag] = value!;
     }
   }
-  const needsId = command === "quick-scan submit" || command === "quick-scan show";
+  const needsId = command === "quick-scan submit" || command === "quick-scan show" || command === "quick-scan wait";
   if (positional.length > (needsId ? 1 : 0)) usage("Unexpected positional argument");
   if (flags["--help"]) return { command, entry, flags, help: { command, ...entry }, body: {} };
   if (needsId && positional.length !== 1) usage("One quick-scan ID is required");
+  if (command === "quick-scan wait" && (!flags["--timeout"] || !/^\d+$/.test(flags["--timeout"]) || Number(flags["--timeout"]) < 1 || Number(flags["--timeout"]) > 20)) usage("--timeout is required and must be an integer from 1 to 20");
   if (flags["--execute"] && flags["--dry-run"]) usage("Choose --execute or --dry-run");
   if (flags["--confirm"] && !flags["--execute"]) usage("--confirm requires --execute");
   if (flags["--full"] && flags["--fields"]) usage("Choose --full or --fields");
@@ -61,14 +64,17 @@ export function parseSubmission(argv: string[]) {
   return { command, entry, flags, body: parsed.data! as Record<string, unknown> };
 }
 
-export async function quickScanCommand(parsed: NonNullable<ReturnType<typeof parseSubmission>>, transport: Transport) {
+export async function quickScanCommand(parsed: NonNullable<ReturnType<typeof parseSubmission>>, transport: Transport): Promise<Record<string, unknown>> {
   if (parsed.help) return parsed.help;
   const { entry, flags, body } = parsed;
-  const response = await transport.request(entry.operation, entry.operation === "quickScanShow" ? { pathParams: { id: String(body.id) }, retry: false }
+  const waiting = parsed.command === "quick-scan wait" ? await waitForResult(transport, "quickScanShow", String(body.id), Number(flags["--timeout"])) : undefined;
+  const response = waiting ? { body: waiting.value } : await transport.request(entry.operation, entry.operation === "quickScanShow" ? { pathParams: { id: String(body.id) }, retry: false }
     : entry.operation === "quickScanState" ? { retry: false } : { body, retry: false });
   const value = response.body as Record<string, unknown> | Record<string, unknown>[];
   const defaults = entry.operation === "quickScanState" ? ["name", "available", "description", "supported_types"] : ["id", "finished", "sha256"];
   const select = (row: Record<string, unknown>) => flags["--full"] ? row : Object.fromEntries((flags["--fields"]?.split(",") ?? defaults)
     .filter((key) => Object.hasOwn(row, key)).map((key) => [key, row[key]]));
-  return { scan: Array.isArray(value) ? value.map(select) : select(value) };
+  const { value: _value, ...status } = waiting ?? {};
+  return { ...status, ...(waiting ? { id: body.id } : {}), ...(value ? { scan: Array.isArray(value) ? value.map(select) : select(value) } : {}),
+    ...(waiting && !waiting.complete ? { help: [...(waiting.help ?? []), `${suggestion("quick-scan wait", flags["--config"], flags["--profile"])} ${body.id} --timeout ${flags["--timeout"]}${flags["--full"] ? " --full" : flags["--fields"] ? ` --fields ${flags["--fields"]}` : ""}`] } : {}) };
 }
