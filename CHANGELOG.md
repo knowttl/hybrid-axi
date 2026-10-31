@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.5](https://github.com/knowttl/hybrid-axi/compare/v0.1.4...v0.1.5) (2026-10-31)
+
+
+### Features
+
+* add bounded report batches and report and quick-scan waits ([#34](https://github.com/knowttl/hybrid-axi/issues/34)) ([79f1767](https://github.com/knowttl/hybrid-axi/commit/79f1767da7ee136c45f73914a958e03299443580))
+
+
+### Bug Fixes
+
+* restore live startup and improve CLI identity and diagnostics ([#32](https://github.com/knowttl/hybrid-axi/issues/32)) ([fa8c7a7](https://github.com/knowttl/hybrid-axi/commit/fa8c7a7db8d6f1c5cd822bb7f4145c0fa88643d4))
+
 ## [0.1.4](https://github.com/knowttl/hybrid-axi/compare/v0.1.3...v0.1.4) (2026-10-30)
 
 
