@@ -1,6 +1,6 @@
 {
   "name": "@knowttl/hybrid-axi",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Investigate Hybrid Analysis with bounded reads and guarded sandbox submissions; quick scans transmit supplied data without write gates",
   "license": "MIT",
   "type": "module",
