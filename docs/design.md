@@ -148,6 +148,7 @@ Retain the requested positional `hash show <sha256>`, `report show <id>` and `ap
 Profile commands share `--config` and `--profile`; `setup hooks` accepts only `--scope` and `--help`.
 Every leaf supports concise `--help` with defaults, required inputs and examples.
 Reject unknown flags, unexpected/duplicate arguments and invalid combinations before credential resolution or HTTP, with exit 2 and valid flags inline.
+Unknown-flag errors name the rejected flag.
 No interactive prompts are needed.
 
 The complete operation ledger below maps commands to exact upstream operations and effects.

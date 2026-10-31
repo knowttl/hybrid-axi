@@ -41,8 +41,7 @@ hybrid-axi system environments
 ```
 
 An API key alone selects a read-only environment profile; no config file is needed.
-Configured home makes three bounded reads without retries: key level, submission quota and five recent public detonation reports.
-The feed is public context, not an account submission history; failures are explicit and an unavailable feed is partial context, never zero results.
+Configured home shows bounded live account and public feed context; see [startup behavior](docs/behavior.md#startup) for request limits and failure handling.
 Run `hybrid-axi home --offline` for local status without HTTP or credential-file reads.
 `setup` only prints a template; `doctor` uses API quota for up to seven reads.
 See [configuration](docs/configuration.md) for named profiles and file-backed credentials.
