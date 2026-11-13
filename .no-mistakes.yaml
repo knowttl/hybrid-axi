@@ -1,4 +1,3 @@
-agent: codex
 no_ci: true
 pr:
   base_branch: main
